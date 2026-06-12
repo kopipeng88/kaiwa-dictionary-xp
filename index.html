@@ -1,0 +1,1873 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaiwa Dictionary XP Pixel</title>
+  <style>
+    :root {
+      --xp-blue: #245edb;
+      --xp-blue-dark: #0b3aa7;
+      --xp-blue-light: #5c8cff;
+      --panel: #ece9d8;
+      --panel-light: #fffdf0;
+      --panel-dark: #b8b29d;
+      --ink: #161616;
+      --muted: #4a4a4a;
+      --green: #47a447;
+      --grass-dark: #2f7c36;
+      --sky: #7ec4ff;
+      --shadow: rgba(0, 0, 0, 0.35);
+      --pixel: 3px;
+      --radius: 0px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      /* 加入了现代、易读的中文字体回退链 */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "MS UI Gothic", sans-serif;
+      color: var(--ink);
+      image-rendering: pixelated;
+      -webkit-font-smoothing: none;
+      font-smooth: never;
+    }
+
+    body {
+      min-height: 100vh;
+      overflow-x: hidden;
+      /* 维持上半部分的蓝天和浅绿，底部过渡更干脆 */
+      background:
+        linear-gradient(to bottom, #8ccfff 0 18%, #6db7f2 18% 58%, #7ab858 58% 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.12) 0 2px, transparent 2px 24px),
+        linear-gradient(0deg, rgba(255,255,255,.09) 0 2px, transparent 2px 24px);
+      opacity: .45;
+      z-index: 0;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 36px;
+      height: 72px; /* 减小高度，只保留一层色块 */
+      pointer-events: none;
+      /* 统一为一个较深的绿色/棕绿色块 (Dark Olive Green) */
+      background:
+        linear-gradient(90deg, rgba(65,95,45,.95) 0 24px, rgba(78,110,55,.95) 24px 48px, rgba(55,85,38,.95) 48px 72px) 0 0 / 72px 72px;
+      opacity: .85;
+      z-index: 0;
+    }
+
+    button, input, select {
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .desktop {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      padding: 28px 16px 58px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .search-shell {
+      width: min(680px, calc(100vw - 28px));
+      margin-top: 26vh;
+      transition: margin-top .22s linear, width .22s linear;
+    }
+
+    body.searched .search-shell {
+      margin-top: 18px;
+      width: min(760px, calc(100vw - 28px));
+    }
+
+    .search-box {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding: 8px;
+      background: var(--panel);
+      border: var(--pixel) solid #ffffff;
+      border-right-color: #7f7f7f;
+      border-bottom-color: #7f7f7f;
+      box-shadow: 6px 6px 0 var(--shadow);
+    }
+
+    .word-input {
+      height: 46px;
+      border: var(--pixel) solid #7f7f7f;
+      border-top-color: #252525;
+      border-left-color: #252525;
+      background: #fffef3;
+      padding: 0 14px;
+      outline: none;
+      box-shadow: inset 3px 3px 0 rgba(0,0,0,.18);
+    }
+
+    .word-input:focus {
+      background: #ffffff;
+    }
+
+    .xp-button {
+      min-width: 108px;
+      height: 46px;
+      padding: 0 14px;
+      border: var(--pixel) solid #ffffff;
+      border-right-color: #6f6f6f;
+      border-bottom-color: #6f6f6f;
+      background: linear-gradient(to bottom, #fffef4, #d8d2bc);
+      cursor: pointer;
+      box-shadow: 3px 3px 0 rgba(0,0,0,.24);
+    }
+
+    .xp-button:active {
+      border-color: #6f6f6f;
+      border-right-color: #ffffff;
+      border-bottom-color: #ffffff;
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 rgba(0,0,0,.25);
+    }
+
+    .workspace {
+      width: min(1060px, calc(100vw - 28px));
+      margin: 24px auto 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1.18fr) minmax(310px, .82fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .hidden { display: none !important; }
+
+    .window {
+      background: var(--panel);
+      border: var(--pixel) solid #083a9a;
+      box-shadow: 7px 7px 0 rgba(0,0,0,.34);
+      min-width: 0;
+    }
+
+    .titlebar {
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5px 0 10px;
+      color: #fff;
+      background: linear-gradient(to bottom, var(--xp-blue-light), var(--xp-blue) 48%, var(--xp-blue-dark));
+      border-bottom: var(--pixel) solid #052a75;
+      font-weight: bold;
+      letter-spacing: .2px;
+      text-shadow: 2px 2px 0 rgba(0,0,0,.35);
+    }
+
+    .window-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tiny-icon {
+      width: 15px;
+      height: 15px;
+      background:
+        linear-gradient(90deg, #5bca54 0 7px, #8bd35c 7px 15px),
+        linear-gradient(#fff, #fff);
+      border: 2px solid #ebf8d5;
+      box-shadow: 2px 2px 0 rgba(0,0,0,.3);
+      flex: 0 0 auto;
+    }
+
+    .title-buttons {
+      display: flex;
+      gap: 3px;
+      align-items: center;
+    }
+
+    .title-btn {
+      width: 22px;
+      height: 22px;
+      line-height: 17px;
+      padding: 0;
+      border: 2px solid #ffffff;
+      border-right-color: #4c4c4c;
+      border-bottom-color: #4c4c4c;
+      background: #e9e5d3;
+      color: #123;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: default;
+    }
+
+    .window-body {
+      padding: 12px;
+      border-top: 2px solid rgba(255,255,255,.55);
+    }
+
+    .mini-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      margin-bottom: 10px;
+      background: #d9d4be;
+      border: 2px solid #fff;
+      border-right-color: #8a846f;
+      border-bottom-color: #8a846f;
+    }
+
+    .mini-toolbar label {
+      color: #232323;
+      font-size: 13px;
+    }
+
+    .mini-toolbar select {
+      height: 28px;
+      border: 2px solid #7d7d7d;
+      border-top-color: #252525;
+      border-left-color: #252525;
+      background: #fffef3;
+      padding: 0 6px;
+    }
+
+    .meta-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .meta-card {
+      min-height: 58px;
+      padding: 8px;
+      background: var(--panel-light);
+      border: 2px solid #ffffff;
+      border-right-color: #9a927b;
+      border-bottom-color: #9a927b;
+      box-shadow: inset 2px 2px 0 rgba(255,255,255,.65);
+    }
+
+    .meta-label {
+      color: #565040;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .meta-value {
+      font-size: 17px;
+      font-weight: bold;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+
+    .table-wrap {
+      max-height: 464px;
+      overflow: auto;
+      border: 3px solid #7f7f7f;
+      border-top-color: #252525;
+      border-left-color: #252525;
+      background: #fffef3;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 8px 7px;
+      border: 2px solid #c7c0aa;
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.35;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #d9d4be;
+      color: #1d1d1d;
+      box-shadow: inset 0 -2px 0 #938b75;
+      white-space: nowrap;
+    }
+
+    tr:nth-child(even) td { background: #f5f0d9; }
+    tr:nth-child(odd) td { background: #fffef3; }
+
+    .form-name {
+      font-weight: bold;
+      color: #143a8e;
+      min-width: 90px;
+    }
+
+    .jp {
+      font-size: 16px;
+      font-weight: bold;
+      color: #101010;
+      word-break: keep-all;
+    }
+
+    .note {
+      /* 更深的颜色，配合更清晰的字体 */
+      color: #2a2a2a;
+      font-size: 13px;
+      margin-top: 3px;
+      line-height: 1.45;
+      font-weight: 500;
+    }
+
+    .dialogue-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .dialogue-card {
+      background: #fffef3;
+      border: 3px solid #7f7f7f;
+      border-top-color: #ffffff;
+      border-left-color: #ffffff;
+      box-shadow: 3px 3px 0 rgba(0,0,0,.16);
+      padding: 9px;
+    }
+
+    .dialogue-head {
+      display: inline-block;
+      background: #245edb;
+      color: #fff;
+      padding: 4px 7px;
+      margin-bottom: 8px;
+      font-weight: bold;
+      box-shadow: 3px 3px 0 rgba(0,0,0,.22);
+    }
+
+    .line {
+      padding: 7px 0;
+      border-top: 2px dotted #cbc4aa;
+    }
+
+    .line:first-of-type { border-top: none; }
+
+    .speaker {
+      display: inline-block;
+      min-width: 22px;
+      margin-right: 4px;
+      color: #143a8e;
+      font-weight: bold;
+    }
+
+    .trans {
+      margin: 4px 0 0 28px;
+      /* 更深色、清晰的中文翻译 */
+      color: #111111;
+      font-size: 14px;
+      line-height: 1.5;
+      font-weight: 500;
+    }
+
+
+
+    .transitivity-box {
+      margin-top: 10px;
+      padding: 10px;
+      background: #fffef3;
+      border: 3px solid #7f7f7f;
+      border-top-color: #ffffff;
+      border-left-color: #ffffff;
+      box-shadow: 3px 3px 0 rgba(0,0,0,.14);
+    }
+
+    .transitivity-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .transitivity-card {
+      padding: 8px;
+      background: #f5f0d9;
+      border: 2px solid #c7c0aa;
+    }
+
+    .transitivity-label {
+      display: inline-block;
+      margin-bottom: 6px;
+      padding: 3px 6px;
+      background: #245edb;
+      color: #fff;
+      font-weight: bold;
+      box-shadow: 2px 2px 0 rgba(0,0,0,.22);
+    }
+
+    .example-line {
+      margin: 4px 0;
+      line-height: 1.5;
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .small-button {
+      height: 30px;
+      min-width: 94px;
+      padding: 0 10px;
+      font-size: 12px;
+      border: 2px solid #fff;
+      border-right-color: #6f6f6f;
+      border-bottom-color: #6f6f6f;
+      background: #e9e4cf;
+      box-shadow: 2px 2px 0 rgba(0,0,0,.22);
+      cursor: pointer;
+    }
+
+    .small-button:active {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0 rgba(0,0,0,.18);
+    }
+
+    .taskbar {
+      position: fixed;
+      z-index: 4;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      background: linear-gradient(to bottom, #2f79ed, #1559d0 48%, #0e3f9e);
+      border-top: 3px solid #62a2ff;
+      color: #fff;
+      box-shadow: 0 -3px 0 rgba(0,0,0,.18);
+    }
+
+    /* Start Button modifications */
+    .start-btn {
+      height: 27px;
+      min-width: 74px;
+      padding: 0 10px;
+      color: #fff;
+      font-weight: bold;
+      text-shadow: 2px 2px 0 rgba(0,0,0,.3);
+      border: 2px solid #91e47f;
+      border-right-color: #276c20;
+      border-bottom-color: #276c20;
+      background: linear-gradient(to bottom, #62d75f, #2f9d2e 54%, #207b20);
+      box-shadow: 2px 2px 0 rgba(0,0,0,.22);
+      cursor: pointer;
+    }
+
+    .start-btn:active {
+      border-top-color: #276c20;
+      border-left-color: #276c20;
+      border-right-color: #91e47f;
+      border-bottom-color: #91e47f;
+      transform: translateY(1px);
+    }
+
+    .task-status {
+      max-width: 52vw;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      height: 27px;
+      line-height: 24px;
+      padding: 0 10px;
+      border: 2px solid rgba(255,255,255,.35);
+      border-right-color: rgba(0,0,0,.28);
+      border-bottom-color: rgba(0,0,0,.28);
+      background: rgba(10, 56, 150, .38);
+      font-size: 12px;
+    }
+
+    .clock {
+      margin-left: auto;
+      height: 27px;
+      line-height: 24px;
+      min-width: 64px;
+      text-align: center;
+      border: 2px solid rgba(0,0,0,.25);
+      border-top-color: rgba(255,255,255,.45);
+      border-left-color: rgba(255,255,255,.45);
+      background: rgba(6, 52, 130, .32);
+      font-size: 12px;
+    }
+
+    .empty-tip {
+      margin-top: 8px;
+      color: rgba(0,0,0,.62);
+      font-size: 13px;
+      text-align: center;
+      text-shadow: 1px 1px 0 rgba(255,255,255,.4);
+      font-weight: bold;
+    }
+
+    body.searched .empty-tip { display: none; }
+
+    @media (max-width: 860px) {
+      .workspace { grid-template-columns: 1fr; }
+      .meta-strip { grid-template-columns: 1fr; }
+      .search-box { grid-template-columns: 1fr; }
+      .xp-button { width: 100%; }
+      .table-wrap { max-height: 420px; }
+      .search-shell { margin-top: 22vh; }
+    }
+  </style>
+</head>
+<body>
+  <main class="desktop">
+    <section class="search-shell" aria-label="search">
+      <form id="searchForm" class="search-box" autocomplete="off">
+        <input id="wordInput" class="word-input" type="text" placeholder="Search Japanese verb... 例：食べる / 行く / 並ぶ・並べる / 開く・開ける" autofocus />
+        <button class="xp-button" type="submit">Search</button>
+      </form>
+      <div class="empty-tip"></div>
+    </section>
+
+    <section id="workspace" class="workspace hidden" aria-live="polite">
+      <article class="window" id="formsWindow">
+        <header class="titlebar">
+          <div class="window-title"><span class="tiny-icon"></span><span id="formsTitle">Conjugation.exe</span></div>
+          <div class="title-buttons">
+            <button class="title-btn" type="button" onclick="document.getElementById('formsWindow').classList.add('hidden')">_</button>
+            <button class="title-btn" type="button">□</button>
+            <button class="title-btn" type="button" onclick="document.getElementById('formsWindow').classList.add('hidden')">×</button>
+          </div>
+        </header>
+        <div class="window-body">
+          <div class="mini-toolbar">
+            <label for="typeSelect">動詞タイプ</label>
+            <select id="typeSelect" title="自动判断不准时可以手动切换">
+              <option value="auto">Auto</option>
+              <option value="godan">五段</option>
+              <option value="ichidan">一段</option>
+              <option value="suru">する / サ変</option>
+              <option value="kuru">来る / カ変</option>
+            </select>
+            <button id="regenBtn" class="small-button" type="button">Regenerate</button>
+            <span class="note" id="detectNote" style="margin-left: auto;">Ready.</span>
+          </div>
+
+          <div class="meta-strip">
+            <div class="meta-card"><div class="meta-label">Word</div><div class="meta-value" id="metaWord">-</div></div>
+            <div class="meta-card"><div class="meta-label">Meaning</div><div class="meta-value" id="metaMeaning">-</div></div>
+            <div class="meta-card"><div class="meta-label">Type</div><div class="meta-value" id="metaType">-</div></div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>活用</th>
+                  <th>肯定</th>
+                  <th>否定</th>
+                  <th>丁寧</th>
+                </tr>
+              </thead>
+              <tbody id="formsBody"></tbody>
+            </table>
+          </div>
+
+          <section id="transitivityBox" class="transitivity-box hidden" aria-label="自動詞と他動詞ペア">
+            <div class="dialogue-head" id="transitivityTitle">自他ペア</div>
+            <div class="note">有固定对应词时才显示：自動詞多表示“状态自己发生”，他動詞多表示“人主动让它发生”。</div>
+            <div id="transitivityExamples" class="transitivity-grid"></div>
+          </section>
+          <div class="footer-actions">
+            <button id="copyFormsBtn" class="small-button" type="button">Copy Table</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="window" id="dialogueWindow">
+        <header class="titlebar">
+          <div class="window-title"><span class="tiny-icon"></span><span id="dialogueTitle">Dialogue.txt</span></div>
+          <div class="title-buttons">
+            <button class="title-btn" type="button" onclick="document.getElementById('dialogueWindow').classList.add('hidden')">_</button>
+            <button class="title-btn" type="button">□</button>
+            <button class="title-btn" type="button" onclick="document.getElementById('dialogueWindow').classList.add('hidden')">×</button>
+          </div>
+        </header>
+        <div class="window-body">
+          <div id="dialogueList" class="dialogue-list"></div>
+          <div class="footer-actions">
+            <button id="copyPromptBtn" class="small-button" type="button">Copy Prompt</button>
+            <button id="copyDialogueBtn" class="small-button" type="button">Copy Text</button>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="taskbar" aria-label="status bar">
+    <button id="startBtn" class="start-btn" type="button">Start</button>
+    <div id="taskStatus" class="task-status">Ready</div>
+    <div id="clock" class="clock">--:--</div>
+  </footer>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { rows: [], dialogues: [], forms: null, prompt: "" };
+
+    const knownIchidan = new Set([
+      "いる", "居る", "見る", "着る", "似る", "煮る", "起きる", "降りる", "借りる", "足りる", "できる",
+      "食べる", "寝る", "出る", "入れる", "開ける", "閉める", "受ける", "教える", "考える", "覚える", "忘れる",
+      "決める", "始める", "続ける", "止める", "見せる", "逃げる", "あげる", "くれる", "調べる", "比べる", "捨てる", "変える",
+      "信じる", "感じる", "閉じる", "落ちる", "過ぎる", "浴びる"
+    ]);
+
+    const godanRuExceptions = new Set([
+      "帰る", "入る", "走る", "知る", "切る", "要る", "減る", "蹴る", "滑る", "喋る", "握る", "参る", "混じる", "焦る", "限る",
+      "かえる", "はいる", "はしる", "しる", "きる", "いる", "へる", "ける", "すべる", "しゃべる", "にぎる", "まいる"
+    ]);
+
+    const meaningMap = {
+      "食べる": { zh: "吃", en: "eat", kana: "たべる", romaji: "taberu", pos: "一段動詞", transitivity: "他動詞", particle: "を" },
+      "飲む": { zh: "喝", en: "drink", kana: "のむ", romaji: "nomu", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "行く": { zh: "去", en: "go", kana: "いく", romaji: "iku", pos: "五段動詞", transitivity: "自動詞", particle: "へ / に" },
+      "いく": { zh: "去", en: "go", kana: "いく", romaji: "iku", pos: "五段動詞", transitivity: "自動詞", particle: "へ / に" },
+      "来る": { zh: "来", en: "come", kana: "くる", romaji: "kuru", pos: "カ変動詞", transitivity: "自動詞", particle: "へ / に" },
+      "くる": { zh: "来", en: "come", kana: "くる", romaji: "kuru", pos: "カ変動詞", transitivity: "自動詞", particle: "へ / に" },
+      "見る": { zh: "看 / 观看", en: "see / watch", kana: "みる", romaji: "miru", pos: "一段動詞", transitivity: "他動詞", particle: "を" },
+      "聞く": { zh: "听 / 询问", en: "listen / ask", kana: "きく", romaji: "kiku", pos: "五段動詞", transitivity: "他動詞", particle: "を / に" },
+      "読む": { zh: "读", en: "read", kana: "よむ", romaji: "yomu", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "書く": { zh: "写", en: "write", kana: "かく", romaji: "kaku", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "話す": { zh: "说 / 讲", en: "speak / talk", kana: "はなす", romaji: "hanasu", pos: "五段動詞", transitivity: "他動詞", particle: "を / と" },
+      "買う": { zh: "买", en: "buy", kana: "かう", romaji: "kau", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "待つ": { zh: "等待", en: "wait", kana: "まつ", romaji: "matsu", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "作る": { zh: "做 / 制作", en: "make", kana: "つくる", romaji: "tsukuru", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "使う": { zh: "使用", en: "use", kana: "つかう", romaji: "tsukau", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "帰る": { zh: "回去 / 回家", en: "return / go home", kana: "かえる", romaji: "kaeru", pos: "五段動詞", transitivity: "自動詞", particle: "へ / に" },
+      "入る": { zh: "进入", en: "enter", kana: "はいる", romaji: "hairu", pos: "五段動詞", transitivity: "自動詞", particle: "に" },
+      "入れる": { zh: "放入 / 装入", en: "put in", kana: "いれる", romaji: "ireru", pos: "一段動詞", transitivity: "他動詞", particle: "を" },
+      "出る": { zh: "出去 / 出现 / 参加", en: "go out / appear / attend", kana: "でる", romaji: "deru", pos: "一段動詞", transitivity: "自動詞", particle: "を / に" },
+      "出す": { zh: "拿出 / 提交 / 发出", en: "take out / submit / send", kana: "だす", romaji: "dasu", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "寝る": { zh: "睡觉", en: "sleep", kana: "ねる", romaji: "neru", pos: "一段動詞", transitivity: "自動詞", particle: "—" },
+      "起きる": { zh: "起床 / 发生", en: "wake up / happen", kana: "おきる", romaji: "okiru", pos: "一段動詞", transitivity: "自動詞", particle: "が" },
+      "働く": { zh: "工作", en: "work", kana: "はたらく", romaji: "hataraku", pos: "五段動詞", transitivity: "自動詞", particle: "で" },
+      "遊ぶ": { zh: "玩 / 游玩", en: "play / hang out", kana: "あそぶ", romaji: "asobu", pos: "五段動詞", transitivity: "自動詞", particle: "で" },
+      "泳ぐ": { zh: "游泳", en: "swim", kana: "およぐ", romaji: "oyogu", pos: "五段動詞", transitivity: "自動詞", particle: "を / で" },
+      "走る": { zh: "跑", en: "run", kana: "はしる", romaji: "hashiru", pos: "五段動詞", transitivity: "自動詞", particle: "を / で" },
+      "洗う": { zh: "洗", en: "wash", kana: "あらう", romaji: "arau", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "開く": { zh: "打开 / 开着", en: "open", kana: "あく / ひらく", romaji: "aku / hiraku", pos: "五段動詞", transitivity: "自動詞 / 他動詞", particle: "が / を" },
+      "開ける": { zh: "打开", en: "open", kana: "あける", romaji: "akeru", pos: "一段動詞", transitivity: "他動詞", particle: "を" },
+      "閉まる": { zh: "关上 / 关闭", en: "close", kana: "しまる", romaji: "shimaru", pos: "五段動詞", transitivity: "自動詞", particle: "が" },
+      "閉める": { zh: "关上 / 关闭", en: "close", kana: "しめる", romaji: "shimeru", pos: "一段動詞", transitivity: "他動詞", particle: "を" },
+      "忘れる": { zh: "忘记", en: "forget", kana: "わすれる", romaji: "wasureru", pos: "一段動詞", transitivity: "他動詞", particle: "を" },
+      "覚える": { zh: "记住 / 学会", en: "memorize / learn", kana: "おぼえる", romaji: "oboeru", pos: "一段動詞", transitivity: "他動詞", particle: "を" },
+      "持つ": { zh: "拿 / 拥有", en: "hold / have", kana: "もつ", romaji: "motsu", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "取る": { zh: "拿取 / 取得", en: "take", kana: "とる", romaji: "toru", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "勉強する": { zh: "学习", en: "study", kana: "べんきょうする", romaji: "benkyou suru", pos: "サ変動詞", transitivity: "他動詞", particle: "を" },
+      "練習する": { zh: "练习", en: "practice", kana: "れんしゅうする", romaji: "renshuu suru", pos: "サ変動詞", transitivity: "他動詞", particle: "を" },
+      "確認する": { zh: "确认", en: "check / confirm", kana: "かくにんする", romaji: "kakunin suru", pos: "サ変動詞", transitivity: "他動詞", particle: "を" },
+      "並ぶ": { zh: "排队 / 排列", en: "line up / be lined up", kana: "ならぶ", romaji: "narabu", pos: "五段動詞", transitivity: "自動詞", particle: "に / が" },
+      "並べる": { zh: "排列 / 摆放", en: "line up / arrange", kana: "ならべる", romaji: "naraberu", pos: "一段動詞", transitivity: "他動詞", particle: "を" },
+      "消える": { zh: "消失 / 熄灭", en: "disappear / go out", kana: "きえる", romaji: "kieru", pos: "一段動詞", transitivity: "自動詞", particle: "が" },
+      "消す": { zh: "关掉 / 擦掉 / 消除", en: "turn off / erase", kana: "けす", romaji: "kesu", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "壊れる": { zh: "坏掉", en: "break / be broken", kana: "こわれる", romaji: "kowareru", pos: "一段動詞", transitivity: "自動詞", particle: "が" },
+      "壊す": { zh: "弄坏 / 破坏", en: "break", kana: "こわす", romaji: "kowasu", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "落ちる": { zh: "掉落 / 落下", en: "fall / drop", kana: "おちる", romaji: "ochiru", pos: "一段動詞", transitivity: "自動詞", particle: "が" },
+      "落とす": { zh: "弄掉 / 丢失", en: "drop / lose", kana: "おとす", romaji: "otosu", pos: "五段動詞", transitivity: "他動詞", particle: "を" },
+      "集まる": { zh: "集合 / 聚集", en: "gather", kana: "あつまる", romaji: "atsumaru", pos: "五段動詞", transitivity: "自動詞", particle: "が / に" },
+      "集める": { zh: "收集 / 召集", en: "collect / gather", kana: "あつめる", romaji: "atsumeru", pos: "一段動詞", transitivity: "他動詞", particle: "を" },
+      "始まる": { zh: "开始", en: "begin / start", kana: "はじまる", romaji: "hajimaru", pos: "五段動詞", transitivity: "自動詞", particle: "が" },
+      "始める": { zh: "开始", en: "begin / start", kana: "はじめる", romaji: "hajimeru", pos: "一段動詞", transitivity: "他動詞", particle: "を" },
+      "決まる": { zh: "决定下来", en: "be decided", kana: "きまる", romaji: "kimaru", pos: "五段動詞", transitivity: "自動詞", particle: "が" },
+      "決める": { zh: "决定", en: "decide", kana: "きめる", romaji: "kimeru", pos: "一段動詞", transitivity: "他動詞", particle: "を" },
+      "する": { zh: "做", en: "do", kana: "する", romaji: "suru", pos: "サ変動詞", transitivity: "他動詞", particle: "を" }
+    };
+
+    const rowMap = {
+      "う": { a: "わ", i: "い", e: "え", o: "お" },
+      "く": { a: "か", i: "き", e: "け", o: "こ" },
+      "ぐ": { a: "が", i: "ぎ", e: "げ", o: "ご" },
+      "す": { a: "さ", i: "し", e: "せ", o: "そ" },
+      "つ": { a: "た", i: "ち", e: "て", o: "と" },
+      "ぬ": { a: "な", i: "に", e: "ね", o: "の" },
+      "ぶ": { a: "ば", i: "び", e: "べ", o: "ぼ" },
+      "む": { a: "ま", i: "み", e: "め", o: "も" },
+      "る": { a: "ら", i: "り", e: "れ", o: "ろ" }
+    };
+
+    const ichidanPrev = "いきぎしじちぢにひびぴみりえけげせぜてでねへべぺめれ";
+
+    function cleanInput(value) {
+      return String(value || "").trim().replace(/\s+/g, "");
+    }
+
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[ch]));
+    }
+
+    function rootOf(verb) {
+      return verb.slice(0, -1);
+    }
+
+    function stripNai(naiForm) {
+      return naiForm.replace(/ない$/, "");
+    }
+
+    function toNakute(naiForm) {
+      return naiForm.replace(/ない$/, "なくて");
+    }
+
+    function toNakatta(naiForm) {
+      return naiForm.replace(/ない$/, "なかった");
+    }
+
+    function toNakereba(naiForm) {
+      return naiForm.replace(/ない$/, "なければ");
+    }
+
+    function toNakutemo(naiForm) {
+      return naiForm.replace(/ない$/, "なくても");
+    }
+
+    function detectType(verb, selected = "auto") {
+      if (selected !== "auto") return selected;
+      if (verb === "来る" || verb === "くる") return "kuru";
+      if (verb === "する" || verb.endsWith("する")) return "suru";
+      if (knownIchidan.has(verb)) return "ichidan";
+      if (godanRuExceptions.has(verb)) return "godan";
+      if (verb.endsWith("る") && verb.length > 1) {
+        const prev = verb.charAt(verb.length - 2);
+        if (ichidanPrev.includes(prev)) return "ichidan";
+      }
+      return "godan";
+    }
+
+    function typeLabel(type) {
+      return { godan: "五段動詞", ichidan: "一段動詞", suru: "サ変 / する", kuru: "カ変 / 来る" }[type] || "Auto";
+    }
+
+    function getMeaning(verb, type) {
+      if (meaningMap[verb]) return meaningMap[verb];
+      if (type === "suru" && verb.endsWith("する")) {
+        const noun = verb.slice(0, -2);
+        return { zh: noun ? `${noun} / 做这个动作` : "做", en: noun ? `${noun} / do this action` : "do", kana: verb, romaji: "", pos: "サ変動詞", transitivity: "多くは他動詞", particle: "を" };
+      }
+      return { zh: "这个动作", en: "this action", kana: verb, romaji: "", pos: typeLabel(type), transitivity: "未判定", particle: "文脈による" };
+    }
+
+    function appendShared(f) {
+      f.nakatta = toNakatta(f.nai);
+      f.negTe = `${toNakute(f.nai)} / ${f.nai}で`;
+      f.progressive = `${f.te}いる`;
+      f.progressiveNeg = `${f.te}いない`;
+      f.progressivePolite = `${f.te}います`;
+      f.progressivePoliteNeg = `${f.te}いません`;
+      f.tai = `${f.stem}たい`;
+      f.taiNeg = `${f.stem}たくない`;
+      f.taiPolite = `${f.stem}たいです`;
+      f.taiPoliteNeg = `${f.stem}たくありません`;
+      f.masupast = `${f.stem}ました`;
+      f.masupastNeg = `${f.stem}ませんでした`;
+      f.tara = `${f.ta}ら`;
+      f.taraNeg = `${f.nakatta}ら`;
+      f.baNeg = `${toNakereba(f.nai)}`;
+      f.must = `${toNakereba(f.nai)}ならない`;
+      f.mustPolite = `${toNakereba(f.nai)}なりません`;
+      f.noNeed = `${toNakutemo(f.nai)}いい`;
+      f.noNeedPolite = `${toNakutemo(f.nai)}いいです`;
+      f.request = `${f.te}ください`;
+      f.requestNeg = `${f.nai}でください`;
+      f.permission = `${f.te}もいい`;
+      f.prohibitionPolite = `${f.nai}でください`;
+      f.try = `${f.te}みる`;
+      f.tryNeg = `${f.te}みない`;
+      f.tooMuch = `${f.stem}すぎる`;
+      f.tooMuchNeg = `${f.stem}すぎない`;
+      f.easy = `${f.stem}やすい`;
+      f.hard = `${f.stem}にくい`;
+      f.before = `${f.dict}前に`;
+      f.after = `${f.ta}後で`;
+      f.without = `${f.nai}で`;
+      f.probably = `${f.dict}でしょう`;
+      f.probablyNeg = `${f.nai}でしょう`;
+      return f;
+    }
+
+    function buildGodan(verb) {
+      const last = verb.slice(-1);
+      const root = rootOf(verb);
+      if (!rowMap[last]) throw new Error("五段動詞として判定できません。動詞タイプを確認してください。");
+      const row = rowMap[last];
+      const a = root + row.a;
+      const i = root + row.i;
+      const e = root + row.e;
+      const o = root + row.o;
+      let te = "";
+      let ta = "";
+      if (last === "う" || last === "つ" || last === "る") { te = root + "って"; ta = root + "った"; }
+      if (last === "く") { te = root + "いて"; ta = root + "いた"; }
+      if (last === "ぐ") { te = root + "いで"; ta = root + "いだ"; }
+      if (last === "す") { te = root + "して"; ta = root + "した"; }
+      if (last === "ぬ" || last === "ぶ" || last === "む") { te = root + "んで"; ta = root + "んだ"; }
+      if (verb.endsWith("行く") || verb.endsWith("いく")) { te = root + "って"; ta = root + "った"; }
+      return appendShared({
+        dict: verb,
+        type: "godan",
+        stem: i,
+        masu: `${i}ます`,
+        masuNeg: `${i}ません`,
+        nai: `${a}ない`,
+        ta,
+        te,
+        volitional: `${o}う`,
+        volitionalNeg: `${a}ないでおこう`,
+        volitionalPolite: `${i}ましょう`,
+        potential: `${e}る`,
+        potentialNeg: `${e}ない`,
+        potentialPolite: `${e}ます`,
+        potentialPoliteNeg: `${e}ません`,
+        passive: `${a}れる`,
+        passiveNeg: `${a}れない`,
+        passivePolite: `${a}れます`,
+        passivePoliteNeg: `${a}れません`,
+        causative: `${a}せる`,
+        causativeNeg: `${a}せない`,
+        causativePolite: `${a}せます`,
+        causativePoliteNeg: `${a}せません`,
+        cpassive: `${a}せられる`,
+        cpassiveNeg: `${a}せられない`,
+        cpassivePolite: `${a}せられます`,
+        cpassivePoliteNeg: `${a}せられません`,
+        ba: `${e}ば`,
+        imperative: e,
+        prohibition: `${verb}な`
+      });
+    }
+
+    function buildIchidan(verb) {
+      const base = rootOf(verb);
+      return appendShared({
+        dict: verb,
+        type: "ichidan",
+        stem: base,
+        masu: `${base}ます`,
+        masuNeg: `${base}ません`,
+        nai: `${base}ない`,
+        ta: `${base}た`,
+        te: `${base}て`,
+        volitional: `${base}よう`,
+        volitionalNeg: `${base}ないでおこう`,
+        volitionalPolite: `${base}ましょう`,
+        potential: `${base}られる`,
+        potentialNeg: `${base}られない`,
+        potentialPolite: `${base}られます`,
+        potentialPoliteNeg: `${base}られません`,
+        passive: `${base}られる`,
+        passiveNeg: `${base}られない`,
+        passivePolite: `${base}られます`,
+        passivePoliteNeg: `${base}られません`,
+        causative: `${base}させる`,
+        causativeNeg: `${base}させない`,
+        causativePolite: `${base}させます`,
+        causativePoliteNeg: `${base}させません`,
+        cpassive: `${base}させられる`,
+        cpassiveNeg: `${base}させられない`,
+        cpassivePolite: `${base}させられます`,
+        cpassivePoliteNeg: `${base}させられません`,
+        ba: `${base}れば`,
+        imperative: `${base}ろ`,
+        prohibition: `${verb}な`
+      });
+    }
+
+    function buildSuru(verb) {
+      const prefix = verb === "する" ? "" : verb.replace(/する$/, "");
+      const stem = `${prefix}し`;
+      const dict = `${prefix}する`;
+      const potential = prefix ? `${prefix}できる` : "できる";
+      return appendShared({
+        dict,
+        type: "suru",
+        stem,
+        masu: `${prefix}します`,
+        masuNeg: `${prefix}しません`,
+        nai: `${prefix}しない`,
+        ta: `${prefix}した`,
+        te: `${prefix}して`,
+        volitional: `${prefix}しよう`,
+        volitionalNeg: `${prefix}しないでおこう`,
+        volitionalPolite: `${prefix}しましょう`,
+        potential,
+        potentialNeg: `${potential.replace(/る$/, "")}ない`,
+        potentialPolite: `${potential.replace(/る$/, "")}ます`,
+        potentialPoliteNeg: `${potential.replace(/る$/, "")}ません`,
+        passive: `${prefix}される`,
+        passiveNeg: `${prefix}されない`,
+        passivePolite: `${prefix}されます`,
+        passivePoliteNeg: `${prefix}されません`,
+        causative: `${prefix}させる`,
+        causativeNeg: `${prefix}させない`,
+        causativePolite: `${prefix}させます`,
+        causativePoliteNeg: `${prefix}させません`,
+        cpassive: `${prefix}させられる`,
+        cpassiveNeg: `${prefix}させられない`,
+        cpassivePolite: `${prefix}させられます`,
+        cpassivePoliteNeg: `${prefix}させられません`,
+        ba: `${prefix}すれば`,
+        imperative: prefix ? `${prefix}しろ` : "しろ / せよ",
+        prohibition: `${dict}な`
+      });
+    }
+
+    function buildKuru(verb) {
+      const kana = verb === "くる";
+      return appendShared({
+        dict: kana ? "くる" : "来る",
+        type: "kuru",
+        stem: kana ? "き" : "来",
+        masu: kana ? "きます" : "来ます",
+        masuNeg: kana ? "きません" : "来ません",
+        nai: kana ? "こない" : "来ない",
+        ta: kana ? "きた" : "来た",
+        te: kana ? "きて" : "来て",
+        volitional: kana ? "こよう" : "来よう",
+        volitionalNeg: kana ? "こないでおこう" : "来ないでおこう",
+        volitionalPolite: kana ? "きましょう" : "来ましょう",
+        potential: kana ? "こられる" : "来られる",
+        potentialNeg: kana ? "こられない" : "来られない",
+        potentialPolite: kana ? "こられます" : "来られます",
+        potentialPoliteNeg: kana ? "こられません" : "来られません",
+        passive: kana ? "こられる" : "来られる",
+        passiveNeg: kana ? "こられない" : "来られない",
+        passivePolite: kana ? "こられます" : "来られます",
+        passivePoliteNeg: kana ? "こられません" : "来られません",
+        causative: kana ? "こさせる" : "来させる",
+        causativeNeg: kana ? "こさせない" : "来させない",
+        causativePolite: kana ? "こさせます" : "来させます",
+        causativePoliteNeg: kana ? "こさせません" : "来させません",
+        cpassive: kana ? "こさせられる" : "来させられる",
+        cpassiveNeg: kana ? "こさせられない" : "来させられない",
+        cpassivePolite: kana ? "こさせられます" : "来させられます",
+        cpassivePoliteNeg: kana ? "こさせられません" : "来させられません",
+        ba: kana ? "くれば" : "来れば",
+        imperative: kana ? "こい" : "来い",
+        prohibition: kana ? "くるな" : "来るな"
+      });
+    }
+
+    function buildForms(verb, selectedType) {
+      const type = detectType(verb, selectedType);
+      if (type === "suru") return buildSuru(verb.endsWith("する") ? verb : "する");
+      if (type === "kuru") return buildKuru(verb === "くる" ? "くる" : "来る");
+      if (type === "ichidan") return buildIchidan(verb);
+      return buildGodan(verb);
+    }
+
+    function buildRows(f) {
+      return [
+        { name: "辞書形 / 非過去", aff: f.dict, neg: f.nai, polite: `${f.masu} / ${f.masuNeg}`, note: "现在・未来。日语动词没有英语式现在/未来形区分。" },
+        { name: "過去形", aff: f.ta, neg: f.nakatta, polite: `${f.masupast} / ${f.masupastNeg}`, note: "过去发生或已经完成。" },
+        { name: "て形", aff: f.te, neg: f.negTe, polite: `${f.request} / ${f.requestNeg}`, note: "连接动作、请求、许可、进行态的基础。" },
+        { name: "進行・状態", aff: f.progressive, neg: f.progressiveNeg, polite: `${f.progressivePolite} / ${f.progressivePoliteNeg}`, note: "正在做，或动作结果持续。" },
+        { name: "願望", aff: f.tai, neg: f.taiNeg, polite: `${f.taiPolite} / ${f.taiPoliteNeg}`, note: "想做 / 不想做。" },
+        { name: "意向", aff: f.volitional, neg: f.volitionalNeg, polite: f.volitionalPolite, note: "一起做吧、我打算做。否定常用「〜ないでおこう」。" },
+        { name: "可能", aff: f.potential, neg: f.potentialNeg, polite: `${f.potentialPolite} / ${f.potentialPoliteNeg}`, note: "能做 / 不能做。" },
+        { name: "受身", aff: f.passive, neg: f.passiveNeg, polite: `${f.passivePolite} / ${f.passivePoliteNeg}`, note: "被动。部分动词语义上不一定自然。" },
+        { name: "使役", aff: f.causative, neg: f.causativeNeg, polite: `${f.causativePolite} / ${f.causativePoliteNeg}`, note: "让某人做。" },
+        { name: "使役受身", aff: f.cpassive, neg: f.cpassiveNeg, polite: `${f.cpassivePolite} / ${f.cpassivePoliteNeg}`, note: "被迫做。五段口语中有时会缩短。" },
+        { name: "条件ば", aff: f.ba, neg: f.baNeg, polite: `${f.ba}いいです / ${f.baNeg}だめです`, note: "如果做 / 如果不做。" },
+        { name: "条件たら", aff: f.tara, neg: f.taraNeg, polite: `${f.tara}どうですか`, note: "做了的话 / 没做的话。" },
+        { name: "命令・禁止", aff: f.imperative, neg: f.prohibition, polite: `${f.request} / ${f.prohibitionPolite}`, note: "命令语气较强；日常更常用ください。" },
+        { name: "許可", aff: f.permission, neg: f.noNeed, polite: `${f.permission}です / ${f.noNeedPolite}`, note: "可以做 / 不做也可以。" },
+        { name: "義務", aff: f.must, neg: f.noNeed, polite: `${f.mustPolite} / ${f.noNeedPolite}`, note: "必须做 / 不必做。" },
+        { name: "試行", aff: f.try, neg: f.tryNeg, polite: `${f.te}みます / ${f.te}みません`, note: "试着做。" },
+        { name: "過度", aff: f.tooMuch, neg: f.tooMuchNeg, polite: `${f.tooMuch.replace(/る$/, "ます")} / ${f.tooMuch.replace(/る$/, "ません")}`, note: "做得太多。" },
+        { name: "しやすい / しにくい", aff: f.easy, neg: f.hard, polite: `${f.easy}です / ${f.hard}です`, note: "容易做 / 难做。这里不是严格的否定，而是使用感对比。" },
+        { name: "前後", aff: f.before, neg: f.after, polite: `${f.before}、確認します`, note: "做之前 / 做之后。" },
+        { name: "ないで", aff: f.without, neg: f.requestNeg, polite: f.requestNeg, note: "不做某事、请不要做。" },
+        { name: "推量", aff: f.probably, neg: f.probablyNeg, polite: `${f.probably} / ${f.probablyNeg}`, note: "大概会做 / 大概不会做。" }
+      ];
+    }
+
+    const dialogueBank = {
+      "食べる": [
+        { title: "昼ごはん / 会社の休憩", lines: [
+          { sp: "A", jp: "今日のお昼、外で食べる？", zh: "今天午饭在外面吃吗？", en: "Are you eating out for lunch today?" },
+          { sp: "B", jp: "うん。駅前の定食屋で食べようと思ってる。", zh: "嗯。我想去车站前的定食店吃。", en: "Yes. I’m thinking of eating at the set-meal place by the station." },
+          { sp: "A", jp: "じゃあ一緒に行こう。十二時に出られる？", zh: "那一起去吧。十二点能走吗？", en: "Then let’s go together. Can you leave at twelve?" }
+        ]},
+        { title: "体調 / 無理しない", lines: [
+          { sp: "A", jp: "朝ごはん、ちゃんと食べた？", zh: "早饭有好好吃吗？", en: "Did you eat breakfast properly?" },
+          { sp: "B", jp: "時間がなくて食べなかった。少しお腹がすいた。", zh: "没时间所以没吃。有点饿了。", en: "I didn’t eat because I had no time. I’m a little hungry." },
+          { sp: "A", jp: "会議の前に何か食べておいたほうがいいよ。", zh: "开会前最好先吃点东西。", en: "You should eat something before the meeting." }
+        ]}
+      ],
+      "飲む": [
+        { title: "カフェ / 注文", lines: [
+          { sp: "A", jp: "何を飲む？コーヒー？", zh: "你喝什么？咖啡吗？", en: "What will you drink? Coffee?" },
+          { sp: "B", jp: "今日は暑いから、アイスティーを飲む。", zh: "今天很热，所以我喝冰红茶。", en: "It’s hot today, so I’ll drink iced tea." },
+          { sp: "A", jp: "じゃあ、私は同じものを頼むね。", zh: "那我也点一样的。", en: "Then I’ll order the same thing." }
+        ]},
+        { title: "薬 / 注意", lines: [
+          { sp: "A", jp: "この薬は水で飲んでください。", zh: "这个药请用水服用。", en: "Please take this medicine with water." },
+          { sp: "B", jp: "お茶で飲んでもいいですか。", zh: "可以用茶喝吗？", en: "Is it okay to take it with tea?" },
+          { sp: "A", jp: "できれば水で飲んだほうがいいです。", zh: "可以的话最好用水。", en: "If possible, it’s better to take it with water." }
+        ]}
+      ],
+      "行く": [
+        { title: "週末 / 約束", lines: [
+          { sp: "A", jp: "土曜日、京都に行くんだよね？", zh: "星期六你要去京都吧？", en: "You’re going to Kyoto on Saturday, right?" },
+          { sp: "B", jp: "うん、朝早く行って、夕方に帰る予定。", zh: "嗯，早上早点去，傍晚回来。", en: "Yes, I plan to go early in the morning and come back in the evening." },
+          { sp: "A", jp: "写真を撮ったら見せてね。", zh: "拍了照片的话给我看看哦。", en: "Show me the photos if you take any." }
+        ]},
+        { title: "道案内 / 駅", lines: [
+          { sp: "A", jp: "このバスは駅まで行きますか。", zh: "这辆公交到车站吗？", en: "Does this bus go to the station?" },
+          { sp: "B", jp: "はい、三つ目の停留所で降りてください。", zh: "到的，请在第三个站下车。", en: "Yes, please get off at the third stop." },
+          { sp: "A", jp: "ありがとうございます。初めて行くので助かります。", zh: "谢谢。我第一次去，帮大忙了。", en: "Thank you. It’s my first time going there, so that helps." }
+        ]}
+      ],
+      "いく": "行く",
+      "来る": [
+        { title: "待ち合わせ / 遅刻", lines: [
+          { sp: "A", jp: "今どこ？もう駅に来た？", zh: "你现在在哪？已经到车站了吗？", en: "Where are you now? Have you come to the station yet?" },
+          { sp: "B", jp: "ごめん、まだ電車の中。あと五分で来る。", zh: "不好意思，还在电车里。五分钟后到。", en: "Sorry, I’m still on the train. I’ll be there in five minutes." },
+          { sp: "A", jp: "大丈夫。改札の前で待ってるね。", zh: "没事。我在检票口前等你。", en: "No problem. I’ll wait in front of the ticket gate." }
+        ]},
+        { title: "家 / 友だち", lines: [
+          { sp: "A", jp: "今度の日曜日、うちに来ない？", zh: "这个星期天要不要来我家？", en: "Do you want to come over this Sunday?" },
+          { sp: "B", jp: "いいね。何時ごろ行けばいい？", zh: "好啊。几点左右去比较好？", en: "Sounds good. Around what time should I come?" },
+          { sp: "A", jp: "三時ごろ来て。駅まで迎えに行くよ。", zh: "三点左右来吧。我去车站接你。", en: "Come around three. I’ll pick you up at the station." }
+        ]}
+      ],
+      "くる": "来る",
+      "見る": [
+        { title: "映画 / 感想", lines: [
+          { sp: "A", jp: "昨日、あの映画を見た？", zh: "昨天看那部电影了吗？", en: "Did you watch that movie yesterday?" },
+          { sp: "B", jp: "見たよ。最後のシーンがすごくよかった。", zh: "看了。最后一幕特别好。", en: "I did. The last scene was really good." },
+          { sp: "A", jp: "私も週末に見るつもり。ネタバレしないでね。", zh: "我也打算周末看。不要剧透哦。", en: "I’m planning to watch it this weekend too. Don’t spoil it." }
+        ]},
+        { title: "確認 / メール", lines: [
+          { sp: "A", jp: "さっき送ったメール、見てもらえますか。", zh: "刚才发的邮件，可以帮我看一下吗？", en: "Could you look at the email I just sent?" },
+          { sp: "B", jp: "はい、今見ます。添付ファイルも確認しますね。", zh: "好的，我现在看。附件也确认一下。", en: "Sure, I’ll look now. I’ll check the attachment too." },
+          { sp: "A", jp: "ありがとうございます。急ぎではないです。", zh: "谢谢。不急。", en: "Thank you. It’s not urgent." }
+        ]}
+      ],
+      "聞く": [
+        { title: "授業 / 聞き取れない", lines: [
+          { sp: "A", jp: "今の説明、聞いた？", zh: "刚才的说明你听到了吗？", en: "Did you hear the explanation just now?" },
+          { sp: "B", jp: "少し速くて、全部は聞き取れなかった。", zh: "有点快，没能全部听懂。", en: "It was a little fast, so I couldn’t catch everything." },
+          { sp: "A", jp: "あとで先生にもう一度聞いてみよう。", zh: "等一下再问老师一次吧。", en: "Let’s ask the teacher again later." }
+        ]},
+        { title: "店 / 質問", lines: [
+          { sp: "A", jp: "この商品の使い方、店員さんに聞いてもいい？", zh: "这个商品的用法，可以问店员吗？", en: "Can I ask the clerk how to use this product?" },
+          { sp: "B", jp: "もちろん。分からないまま買わないほうがいいよ。", zh: "当然。不懂就买不太好。", en: "Of course. It’s better not to buy it without understanding." },
+          { sp: "A", jp: "じゃあ、ちょっと聞いてくる。", zh: "那我去问一下。", en: "Then I’ll go ask." }
+        ]}
+      ],
+      "読む": [
+        { title: "通勤 / ニュース", lines: [
+          { sp: "A", jp: "電車の中で何を読んでるの？", zh: "你在电车里读什么？", en: "What are you reading on the train?" },
+          { sp: "B", jp: "日本語のニュース。短い記事なら読めるようになってきた。", zh: "日语新闻。短文章的话渐渐能读了。", en: "Japanese news. I’m starting to be able to read short articles." },
+          { sp: "A", jp: "いいね。知らない単語はメモしておくといいよ。", zh: "不错。不会的单词记下来比较好。", en: "Nice. You should write down words you don’t know." }
+        ]},
+        { title: "学校 / 宿題", lines: [
+          { sp: "A", jp: "明日までにこのページを読まなきゃ。", zh: "明天之前必须读完这一页。", en: "I have to read this page by tomorrow." },
+          { sp: "B", jp: "量は多い？", zh: "量很多吗？", en: "Is there a lot?" },
+          { sp: "A", jp: "そんなに多くないけど、漢字が難しい。", zh: "不是很多，但是汉字难。", en: "Not that much, but the kanji are difficult." }
+        ]}
+      ],
+      "書く": [
+        { title: "メモ / 忘れ防止", lines: [
+          { sp: "A", jp: "買うもの、ちゃんと書いた？", zh: "要买的东西好好写下来了吗？", en: "Did you write down what we need to buy?" },
+          { sp: "B", jp: "うん、スマホのメモに書いた。", zh: "嗯，写在手机备忘录里了。", en: "Yes, I wrote it in my phone notes." },
+          { sp: "A", jp: "じゃあスーパーで迷わないね。", zh: "那在超市就不会迷糊了。", en: "Then we won’t get confused at the supermarket." }
+        ]},
+        { title: "仕事 / 返信", lines: [
+          { sp: "A", jp: "取引先へのメール、もう書きましたか。", zh: "给客户的邮件已经写了吗？", en: "Have you written the email to the client yet?" },
+          { sp: "B", jp: "下書きは書きました。送る前に確認してもらえますか。", zh: "草稿写好了。发送前可以帮我确认吗？", en: "I wrote a draft. Could you check it before I send it?" },
+          { sp: "A", jp: "はい、あとで見ます。", zh: "好的，我等一下看。", en: "Sure, I’ll look at it later." }
+        ]}
+      ],
+      "話す": [
+        { title: "語学 / 会話練習", lines: [
+          { sp: "A", jp: "日本語を話す機会、最近ある？", zh: "最近有说日语的机会吗？", en: "Have you had chances to speak Japanese lately?" },
+          { sp: "B", jp: "少ないけど、店で注文するときは日本語で話してる。", zh: "不多，不过在店里点餐时会用日语说。", en: "Not many, but I speak Japanese when ordering at shops." },
+          { sp: "A", jp: "それだけでもいい練習になるよ。", zh: "光是那样也是很好的练习。", en: "Even that is good practice." }
+        ]},
+        { title: "相談 / ちゃんと伝える", lines: [
+          { sp: "A", jp: "困っているなら、先生に話したほうがいいよ。", zh: "如果有困难，最好跟老师说。", en: "If you’re having trouble, you should talk to the teacher." },
+          { sp: "B", jp: "うん。でも日本語でうまく話せるか心配。", zh: "嗯。但担心能不能用日语说清楚。", en: "Yeah, but I’m worried whether I can explain it well in Japanese." },
+          { sp: "A", jp: "メモを書いてから話せば大丈夫。", zh: "先写个笔记再说就没事。", en: "You’ll be fine if you write notes first." }
+        ]}
+      ],
+      "買う": [
+        { title: "コンビニ / 必要なもの", lines: [
+          { sp: "A", jp: "帰りにコンビニで何か買う？", zh: "回去路上在便利店买点什么吗？", en: "Are you buying anything at the convenience store on the way back?" },
+          { sp: "B", jp: "うん、明日の朝ごはんを買う。", zh: "嗯，买明天的早饭。", en: "Yes, I’ll buy breakfast for tomorrow." },
+          { sp: "A", jp: "じゃあ牛乳も買ってきてくれる？", zh: "那可以顺便买牛奶回来吗？", en: "Could you buy milk too?" }
+        ]},
+        { title: "買い物 / 迷う", lines: [
+          { sp: "A", jp: "このバッグ、買うかどうか迷ってる。", zh: "这个包要不要买，我在犹豫。", en: "I’m not sure whether to buy this bag." },
+          { sp: "B", jp: "毎日使うなら買ってもいいと思う。", zh: "如果每天用的话，我觉得可以买。", en: "If you’ll use it every day, I think it’s okay to buy it." },
+          { sp: "A", jp: "じゃあ、もう少しだけ考える。", zh: "那我再想一会儿。", en: "Then I’ll think a little more." }
+        ]}
+      ],
+      "待つ": [
+        { title: "待ち合わせ / 駅前", lines: [
+          { sp: "A", jp: "駅の前で待ってるね。", zh: "我在车站前等你。", en: "I’ll wait in front of the station." },
+          { sp: "B", jp: "ありがとう。電車が少し遅れてる。", zh: "谢谢。电车有点晚点。", en: "Thanks. The train is a little delayed." },
+          { sp: "A", jp: "急がなくていいよ。中に入って待つから。", zh: "不用着急。我进去里面等。", en: "No need to rush. I’ll wait inside." }
+        ]},
+        { title: "店 / 行列", lines: [
+          { sp: "A", jp: "この店、けっこう待つみたい。", zh: "这家店好像要等挺久。", en: "It looks like we’ll have to wait quite a while at this shop." },
+          { sp: "B", jp: "三十分くらいなら待てるよ。", zh: "三十分钟左右的话我能等。", en: "I can wait if it’s about thirty minutes." },
+          { sp: "A", jp: "じゃあ名前を書いておこう。", zh: "那先把名字写上吧。", en: "Then let’s write our name down." }
+        ]}
+      ],
+      "作る": [
+        { title: "料理 / 晩ごはん", lines: [
+          { sp: "A", jp: "今夜、何を作る？", zh: "今晚做什么？", en: "What are you making tonight?" },
+          { sp: "B", jp: "冷蔵庫に野菜があるから、カレーを作るつもり。", zh: "冰箱里有蔬菜，所以打算做咖喱。", en: "There are vegetables in the fridge, so I’m planning to make curry." },
+          { sp: "A", jp: "いいね。ご飯は私が炊くよ。", zh: "好啊。米饭我来煮。", en: "Nice. I’ll cook the rice." }
+        ]},
+        { title: "資料 / 仕事", lines: [
+          { sp: "A", jp: "会議の資料、もう作った？", zh: "会议资料已经做了吗？", en: "Have you made the meeting materials yet?" },
+          { sp: "B", jp: "半分くらい作った。グラフだけまだ。", zh: "做了大概一半。只有图表还没做。", en: "I’ve made about half. Only the graphs are left." },
+          { sp: "A", jp: "必要ならデータを送るよ。", zh: "需要的话我把数据发给你。", en: "I’ll send the data if you need it." }
+        ]}
+      ],
+      "使う": [
+        { title: "アプリ / 便利", lines: [
+          { sp: "A", jp: "その翻訳アプリ、よく使う？", zh: "那个翻译 App 你常用吗？", en: "Do you use that translation app often?" },
+          { sp: "B", jp: "うん、外で分からない言葉を見たときに使う。", zh: "嗯，在外面看到不懂的词时会用。", en: "Yes, I use it when I see words I don’t understand outside." },
+          { sp: "A", jp: "私も入れてみようかな。", zh: "那我也装来试试。", en: "Maybe I’ll install it too." }
+        ]},
+        { title: "共有 / 会社", lines: [
+          { sp: "A", jp: "このパソコン、午後に使ってもいいですか。", zh: "这台电脑下午可以用吗？", en: "May I use this computer in the afternoon?" },
+          { sp: "B", jp: "はい。ただ、五時までには返してください。", zh: "可以。不过请在五点前还回来。", en: "Yes. Just please return it by five." },
+          { sp: "A", jp: "分かりました。使い終わったら声をかけます。", zh: "明白。用完后我跟你说。", en: "Understood. I’ll let you know when I’m done using it." }
+        ]}
+      ],
+      "帰る": [
+        { title: "仕事終わり / 予定", lines: [
+          { sp: "A", jp: "今日は何時ごろ帰る？", zh: "今天几点左右回去？", en: "Around what time are you going home today?" },
+          { sp: "B", jp: "七時までには帰りたい。洗濯もしなきゃ。", zh: "想在七点前回去。还得洗衣服。", en: "I want to be home by seven. I also need to do laundry." },
+          { sp: "A", jp: "じゃあ、残りは明日やろう。", zh: "那剩下的明天做吧。", en: "Then let’s do the rest tomorrow." }
+        ]},
+        { title: "旅行 / 実家", lines: [
+          { sp: "A", jp: "お盆は実家に帰るの？", zh: "盂兰盆节回老家吗？", en: "Are you going back to your parents’ home for Obon?" },
+          { sp: "B", jp: "うん、三日だけ帰る予定。", zh: "嗯，打算只回去三天。", en: "Yes, I plan to go back for just three days." },
+          { sp: "A", jp: "久しぶりなら、ご家族も喜ぶね。", zh: "很久没回的话，家人也会开心吧。", en: "If it’s been a while, your family will be happy." }
+        ]}
+      ],
+      "入る": [
+        { title: "店 / 混んでいる", lines: [
+          { sp: "A", jp: "このカフェ、入る？", zh: "进这家咖啡店吗？", en: "Do you want to go into this café?" },
+          { sp: "B", jp: "うーん、ちょっと混んでるね。", zh: "嗯，有点挤呢。", en: "Hmm, it’s a bit crowded." },
+          { sp: "A", jp: "じゃあ、隣の店に入ってみよう。", zh: "那进旁边那家看看吧。", en: "Then let’s try going into the shop next door." }
+        ]},
+        { title: "教室 / 授業前", lines: [
+          { sp: "A", jp: "もう教室に入ってもいいですか。", zh: "现在可以进教室了吗？", en: "May I enter the classroom now?" },
+          { sp: "B", jp: "はい、先生はまだ来ていませんが、入って大丈夫です。", zh: "可以，老师还没来，但可以进去。", en: "Yes, the teacher isn’t here yet, but it’s okay to go in." },
+          { sp: "A", jp: "ありがとうございます。前の席に座ります。", zh: "谢谢。我坐前面的座位。", en: "Thank you. I’ll sit in the front." }
+        ]}
+      ],
+      "入れる": [
+        { title: "片づけ / かばん", lines: [
+          { sp: "A", jp: "この本、どこに入れる？", zh: "这本书放哪里？", en: "Where should I put this book?" },
+          { sp: "B", jp: "そのかばんに入れておいて。あとで持って行く。", zh: "先放进那个包里。我等一下带走。", en: "Put it in that bag. I’ll take it later." },
+          { sp: "A", jp: "分かった。ノートも一緒に入れるね。", zh: "知道了。笔记本也一起放进去。", en: "Got it. I’ll put the notebook in too." }
+        ]},
+        { title: "飲み物 / 砂糖", lines: [
+          { sp: "A", jp: "コーヒーに砂糖を入れる？", zh: "咖啡里放糖吗？", en: "Do you put sugar in your coffee?" },
+          { sp: "B", jp: "少しだけ入れる。ミルクは入れない。", zh: "只放一点。不放牛奶。", en: "I put in just a little. I don’t add milk." },
+          { sp: "A", jp: "じゃあ砂糖を一つ持ってくるね。", zh: "那我拿一包糖来。", en: "Then I’ll bring one sugar." }
+        ]}
+      ],
+      "出る": [
+        { title: "家を出る / 朝", lines: [
+          { sp: "A", jp: "何時に家を出る？", zh: "几点出门？", en: "What time are you leaving home?" },
+          { sp: "B", jp: "八時には出ないと、電車に間に合わない。", zh: "八点前不出门的话赶不上电车。", en: "If I don’t leave by eight, I won’t make the train." },
+          { sp: "A", jp: "じゃあ、もう準備したほうがいいよ。", zh: "那你最好现在准备。", en: "Then you should get ready now." }
+        ]},
+        { title: "イベント / 参加", lines: [
+          { sp: "A", jp: "来週の発表会に出るの？", zh: "你参加下周的发表会吗？", en: "Are you appearing in next week’s presentation event?" },
+          { sp: "B", jp: "うん、短いスピーチで出ることになった。", zh: "嗯，决定做一个简短演讲参加。", en: "Yes, I’m going to give a short speech." },
+          { sp: "A", jp: "すごい。練習を手伝うよ。", zh: "厉害。我帮你练习。", en: "Nice. I’ll help you practice." }
+        ]}
+      ],
+      "出す": [
+        { title: "宿題 / 提出", lines: [
+          { sp: "A", jp: "宿題、もう出した？", zh: "作业已经交了吗？", en: "Have you submitted the homework yet?" },
+          { sp: "B", jp: "まだ。昼休みに先生に出すつもり。", zh: "还没。打算午休时交给老师。", en: "Not yet. I plan to submit it to the teacher during lunch break." },
+          { sp: "A", jp: "忘れないように机の上に置いておきなよ。", zh: "为了别忘，放在桌上吧。", en: "Put it on your desk so you don’t forget." }
+        ]},
+        { title: "店 / ゴミ", lines: [
+          { sp: "A", jp: "このゴミ、どこに出せばいいですか。", zh: "这个垃圾应该扔在哪里？", en: "Where should I put out this trash?" },
+          { sp: "B", jp: "燃えるゴミは朝八時までに外へ出してください。", zh: "可燃垃圾请在早上八点前拿到外面。", en: "Please put burnable trash outside by eight in the morning." },
+          { sp: "A", jp: "分かりました。明日の朝出します。", zh: "明白。我明早拿出去。", en: "Understood. I’ll put it out tomorrow morning." }
+        ]}
+      ],
+      "寝る": [
+        { title: "生活 / 早寝", lines: [
+          { sp: "A", jp: "昨日、何時に寝た？", zh: "昨天几点睡的？", en: "What time did you sleep yesterday?" },
+          { sp: "B", jp: "二時ごろ寝たから、今日は眠い。", zh: "两点左右睡的，所以今天很困。", en: "I slept around two, so I’m sleepy today." },
+          { sp: "A", jp: "今日は早く寝たほうがいいよ。", zh: "今天最好早点睡。", en: "You should sleep early today." }
+        ]},
+        { title: "旅行 / ホテル", lines: [
+          { sp: "A", jp: "明日は早いから、もう寝よう。", zh: "明天很早，睡吧。", en: "Tomorrow starts early, so let’s sleep now." },
+          { sp: "B", jp: "うん。アラームを七時にセットした。", zh: "嗯。闹钟设到七点了。", en: "Yes. I set the alarm for seven." },
+          { sp: "A", jp: "じゃあ電気を消すね。", zh: "那我关灯了。", en: "Then I’ll turn off the light." }
+        ]}
+      ],
+      "起きる": [
+        { title: "朝 / 寝坊", lines: [
+          { sp: "A", jp: "今朝、何時に起きた？", zh: "今天早上几点起的？", en: "What time did you wake up this morning?" },
+          { sp: "B", jp: "八時に起きるつもりだったのに、九時に起きた。", zh: "本来打算八点起，结果九点才起。", en: "I meant to wake up at eight, but woke up at nine." },
+          { sp: "A", jp: "遅刻しなかった？", zh: "没迟到吗？", en: "Were you late?" }
+        ]},
+        { title: "出来事 / トラブル", lines: [
+          { sp: "A", jp: "昨日、駅で何か起きたの？", zh: "昨天车站发生什么事了吗？", en: "Did something happen at the station yesterday?" },
+          { sp: "B", jp: "電車のトラブルが起きて、すごく混んでた。", zh: "电车出了故障，特别挤。", en: "There was a train problem, and it was really crowded." },
+          { sp: "A", jp: "それは大変だったね。", zh: "那真辛苦。", en: "That must have been rough." }
+        ]}
+      ],
+      "働く": [
+        { title: "仕事 / シフト", lines: [
+          { sp: "A", jp: "今週の土曜日も働くの？", zh: "这周六也工作吗？", en: "Are you working this Saturday too?" },
+          { sp: "B", jp: "うん、午前中だけ働く。午後は休み。", zh: "嗯，只上上午。下午休息。", en: "Yes, only in the morning. I’m off in the afternoon." },
+          { sp: "A", jp: "じゃあ夕方にご飯行けるね。", zh: "那傍晚可以去吃饭了。", en: "Then we can go eat in the evening." }
+        ]},
+        { title: "職場 / 新しい環境", lines: [
+          { sp: "A", jp: "新しい会社で働くのはどう？", zh: "在新公司工作怎么样？", en: "How is working at the new company?" },
+          { sp: "B", jp: "忙しいけど、みんな親切で働きやすい。", zh: "忙是忙，但大家都很亲切，工作起来舒服。", en: "It’s busy, but everyone is kind, so it’s easy to work there." },
+          { sp: "A", jp: "それならよかった。", zh: "那就好。", en: "That’s good to hear." }
+        ]}
+      ],
+      "遊ぶ": [
+        { title: "休日 / 友だち", lines: [
+          { sp: "A", jp: "日曜日、どこかで遊ばない？", zh: "星期天要不要去哪儿玩？", en: "Do you want to hang out somewhere on Sunday?" },
+          { sp: "B", jp: "いいね。天気がよければ公園で遊びたい。", zh: "好啊。天气好的话想去公园玩。", en: "Sounds good. If the weather is nice, I want to hang out at the park." },
+          { sp: "A", jp: "じゃあ昼ごろ集合しよう。", zh: "那中午左右集合吧。", en: "Then let’s meet around noon." }
+        ]},
+        { title: "子ども / 公園", lines: [
+          { sp: "A", jp: "子どもたちはどこで遊んでる？", zh: "孩子们在哪里玩？", en: "Where are the kids playing?" },
+          { sp: "B", jp: "公園の砂場で遊んでるよ。", zh: "在公园的沙坑玩。", en: "They’re playing in the sandbox at the park." },
+          { sp: "A", jp: "じゃあ、あと十分したら迎えに行こう。", zh: "那十分钟后去接他们吧。", en: "Then let’s pick them up in ten minutes." }
+        ]}
+      ],
+      "泳ぐ": [
+        { title: "夏 / プール", lines: [
+          { sp: "A", jp: "夏休みにプールで泳ぐ？", zh: "暑假去泳池游泳吗？", en: "Will you swim at the pool during summer break?" },
+          { sp: "B", jp: "うん。去年より長く泳げるようになりたい。", zh: "嗯。想比去年游得更远。", en: "Yes. I want to be able to swim longer than last year." },
+          { sp: "A", jp: "無理しないで、少しずつ練習しよう。", zh: "别勉强，慢慢练吧。", en: "Don’t push yourself; let’s practice little by little." }
+        ]},
+        { title: "海 / 安全", lines: [
+          { sp: "A", jp: "ここで泳いでも大丈夫？", zh: "可以在这里游泳吗？", en: "Is it safe to swim here?" },
+          { sp: "B", jp: "今日は波が高いから、泳がないほうがいい。", zh: "今天浪大，最好不要游。", en: "The waves are high today, so it’s better not to swim." },
+          { sp: "A", jp: "分かった。浜辺で休もう。", zh: "知道了。在沙滩休息吧。", en: "Got it. Let’s rest on the beach." }
+        ]}
+      ],
+      "走る": [
+        { title: "朝 / 運動", lines: [
+          { sp: "A", jp: "最近、朝走ってるの？", zh: "最近早上在跑步吗？", en: "Have you been running in the morning lately?" },
+          { sp: "B", jp: "うん、駅までじゃなくて、公園を走ってる。", zh: "嗯，不是跑到车站，是在公园跑。", en: "Yes, not to the station; I run around the park." },
+          { sp: "A", jp: "健康的でいいね。", zh: "很健康，真不错。", en: "That’s healthy. Nice." }
+        ]},
+        { title: "遅刻 / 急ぐ", lines: [
+          { sp: "A", jp: "電車まであと三分しかない。走る？", zh: "离电车还有三分钟。跑吗？", en: "Only three minutes until the train. Should we run?" },
+          { sp: "B", jp: "走れば間に合うかもしれない。", zh: "跑的话可能赶得上。", en: "If we run, we might make it." },
+          { sp: "A", jp: "じゃあ、転ばないように気をつけて。", zh: "那小心别摔倒。", en: "Then be careful not to fall." }
+        ]}
+      ],
+      "洗う": [
+        { title: "料理前 / 手", lines: [
+          { sp: "A", jp: "料理をする前に手を洗った？", zh: "做饭前洗手了吗？", en: "Did you wash your hands before cooking?" },
+          { sp: "B", jp: "まだ。今から洗う。", zh: "还没。现在去洗。", en: "Not yet. I’ll wash them now." },
+          { sp: "A", jp: "タオルは洗面所にあるよ。", zh: "毛巾在洗手间。", en: "The towel is in the washroom." }
+        ]},
+        { title: "洗濯 / 週末", lines: [
+          { sp: "A", jp: "このシャツ、自分で洗える？", zh: "这件衬衫可以自己洗吗？", en: "Can I wash this shirt myself?" },
+          { sp: "B", jp: "タグを見て。手で洗ったほうがよさそう。", zh: "看一下标签。好像手洗比较好。", en: "Check the tag. It looks better to wash it by hand." },
+          { sp: "A", jp: "分かった。あとで洗っておく。", zh: "知道了。我等一下洗。", en: "Got it. I’ll wash it later." }
+        ]}
+      ],
+      "開く": [
+        { title: "店 / 営業時間", lines: [
+          { sp: "A", jp: "この店、何時に開く？", zh: "这家店几点开？", en: "What time does this shop open?" },
+          { sp: "B", jp: "十時に開くみたい。あと少し待とう。", zh: "好像十点开。再等一下吧。", en: "It seems to open at ten. Let’s wait a little." },
+          { sp: "A", jp: "じゃあ先に近くを歩こうか。", zh: "那先在附近走走吧。", en: "Then shall we walk around nearby first?" }
+        ]},
+        { title: "ドア / 状態", lines: [
+          { sp: "A", jp: "あれ、ドアが開いてる。", zh: "咦，门开着。", en: "Oh, the door is open." },
+          { sp: "B", jp: "本当だ。さっき誰か入ったのかな。", zh: "真的。刚才是不是有人进来了。", en: "You’re right. Maybe someone came in earlier." },
+          { sp: "A", jp: "念のため確認しよう。", zh: "以防万一确认一下吧。", en: "Let’s check just in case." }
+        ]}
+      ],
+      "開ける": [
+        { title: "窓 / 換気", lines: [
+          { sp: "A", jp: "少し暑いね。窓を開けてもいい？", zh: "有点热。可以开窗吗？", en: "It’s a little hot. May I open the window?" },
+          { sp: "B", jp: "うん、開けて。風が入ると思う。", zh: "嗯，开吧。应该会有风进来。", en: "Yes, open it. I think some air will come in." },
+          { sp: "A", jp: "ありがとう。少しだけ開けるね。", zh: "谢谢。我开一点。", en: "Thanks. I’ll open it just a little." }
+        ]},
+        { title: "荷物 / 受け取り", lines: [
+          { sp: "A", jp: "この箱、開けてもいいですか。", zh: "这个箱子可以打开吗？", en: "May I open this box?" },
+          { sp: "B", jp: "はい、中身を確認してください。", zh: "可以，请确认里面的东西。", en: "Yes, please check what’s inside." },
+          { sp: "A", jp: "では、ハサミで開けます。", zh: "那我用剪刀打开。", en: "Then I’ll open it with scissors." }
+        ]}
+      ],
+      "閉まる": [
+        { title: "店 / 閉店", lines: [
+          { sp: "A", jp: "このスーパー、何時に閉まる？", zh: "这家超市几点关门？", en: "What time does this supermarket close?" },
+          { sp: "B", jp: "九時に閉まるよ。まだ間に合う。", zh: "九点关。还来得及。", en: "It closes at nine. We can still make it." },
+          { sp: "A", jp: "じゃあ急いで買い物しよう。", zh: "那赶快买东西吧。", en: "Then let’s shop quickly." }
+        ]},
+        { title: "電車 / ドア", lines: [
+          { sp: "A", jp: "ドアが閉まります。気をつけて。", zh: "门要关了。请小心。", en: "The doors are closing. Be careful." },
+          { sp: "B", jp: "危なかった。乗るのをやめてよかった。", zh: "好险。幸好没硬上。", en: "That was close. Good thing we didn’t try to get on." },
+          { sp: "A", jp: "次の電車を待とう。", zh: "等下一班吧。", en: "Let’s wait for the next train." }
+        ]}
+      ],
+      "閉める": [
+        { title: "窓 / 外出前", lines: [
+          { sp: "A", jp: "出かける前に窓を閉めた？", zh: "出门前窗户关了吗？", en: "Did you close the window before going out?" },
+          { sp: "B", jp: "まだ。雨が降りそうだから、今閉める。", zh: "还没。好像要下雨，我现在关。", en: "Not yet. It looks like rain, so I’ll close it now." },
+          { sp: "A", jp: "ありがとう。鍵も確認してね。", zh: "谢谢。锁也确认一下。", en: "Thanks. Check the lock too." }
+        ]},
+        { title: "店 / 最後の確認", lines: [
+          { sp: "A", jp: "店を閉める前に、レジを確認してください。", zh: "关店前请确认收银机。", en: "Please check the register before closing the shop." },
+          { sp: "B", jp: "分かりました。照明も消します。", zh: "明白。灯也会关掉。", en: "Understood. I’ll turn off the lights too." },
+          { sp: "A", jp: "終わったら声をかけてください。", zh: "结束后请叫我。", en: "Let me know when you’re done." }
+        ]}
+      ],
+      "忘れる": [
+        { title: "持ち物 / うっかり", lines: [
+          { sp: "A", jp: "傘を持ってきた？", zh: "带伞了吗？", en: "Did you bring an umbrella?" },
+          { sp: "B", jp: "忘れた。朝は晴れてたから。", zh: "忘了。早上是晴天。", en: "I forgot. It was sunny in the morning." },
+          { sp: "A", jp: "じゃあ、帰りに一本買おう。", zh: "那回去时买一把吧。", en: "Then let’s buy one on the way home." }
+        ]},
+        { title: "予定 / リマインダー", lines: [
+          { sp: "A", jp: "明日の予約、忘れないでね。", zh: "别忘了明天的预约。", en: "Don’t forget tomorrow’s appointment." },
+          { sp: "B", jp: "大丈夫。カレンダーに入れてある。", zh: "没事。我已经加到日历里了。", en: "No worries. I put it in my calendar." },
+          { sp: "A", jp: "それなら安心。", zh: "那就放心了。", en: "Then I’m relieved." }
+        ]}
+      ],
+      "覚える": [
+        { title: "単語 / 勉強", lines: [
+          { sp: "A", jp: "この単語、なかなか覚えられない。", zh: "这个单词总是记不住。", en: "I just can’t memorize this word." },
+          { sp: "B", jp: "例文で覚えると忘れにくいよ。", zh: "用例句记的话不容易忘。", en: "It’s easier to remember if you learn it with example sentences." },
+          { sp: "A", jp: "じゃあ、自分で短い文を作ってみる。", zh: "那我自己试着造个短句。", en: "Then I’ll try making a short sentence myself." }
+        ]},
+        { title: "仕事 / 手順", lines: [
+          { sp: "A", jp: "この作業の手順、もう覚えた？", zh: "这个操作流程已经记住了吗？", en: "Have you memorized the steps for this task yet?" },
+          { sp: "B", jp: "だいたい覚えましたが、最後だけ確認したいです。", zh: "大致记住了，但最后一步想确认一下。", en: "I’ve mostly learned it, but I’d like to check the last part." },
+          { sp: "A", jp: "もちろん。一緒にやってみましょう。", zh: "当然。一起做一遍吧。", en: "Of course. Let’s try it together." }
+        ]}
+      ],
+      "持つ": [
+        { title: "荷物 / 手伝い", lines: [
+          { sp: "A", jp: "荷物、多いね。一つ持とうか。", zh: "行李好多。我帮你拿一个吧。", en: "You have a lot of bags. Shall I carry one?" },
+          { sp: "B", jp: "ありがとう。じゃあ、この袋を持ってくれる？", zh: "谢谢。那可以帮我拿这个袋子吗？", en: "Thanks. Could you hold this bag?" },
+          { sp: "A", jp: "もちろん。重くないから大丈夫。", zh: "当然。不重，没事。", en: "Of course. It’s not heavy, so it’s fine." }
+        ]},
+        { title: "資格 / 面接", lines: [
+          { sp: "A", jp: "運転免許を持っていますか。", zh: "你有驾照吗？", en: "Do you have a driver’s license?" },
+          { sp: "B", jp: "はい、持っています。ただ、最近はあまり運転していません。", zh: "有。不过最近不怎么开车。", en: "Yes, I do. But I haven’t driven much recently." },
+          { sp: "A", jp: "分かりました。ありがとうございます。", zh: "了解。谢谢。", en: "Understood. Thank you." }
+        ]}
+      ],
+      "取る": [
+        { title: "食卓 / 手が届かない", lines: [
+          { sp: "A", jp: "そこの醤油、取ってくれる？", zh: "可以帮我拿一下那边的酱油吗？", en: "Could you pass me the soy sauce there?" },
+          { sp: "B", jp: "はい、どうぞ。", zh: "好，给你。", en: "Sure, here you go." },
+          { sp: "A", jp: "ありがとう。ちょっと遠かった。", zh: "谢谢。有点远够不到。", en: "Thanks. It was a bit far." }
+        ]},
+        { title: "予約 / ホテル", lines: [
+          { sp: "A", jp: "週末のホテル、もう取った？", zh: "周末的酒店已经订了吗？", en: "Have you booked the hotel for the weekend?" },
+          { sp: "B", jp: "うん、駅の近くで取ったよ。", zh: "嗯，订在车站附近了。", en: "Yes, I booked one near the station." },
+          { sp: "A", jp: "助かる。移動が楽だね。", zh: "太好了。移动起来方便。", en: "That helps. Getting around will be easy." }
+        ]}
+      ],
+      "勉強する": [
+        { title: "試験 / 計画", lines: [
+          { sp: "A", jp: "今夜、日本語を勉強する？", zh: "今晚学日语吗？", en: "Are you studying Japanese tonight?" },
+          { sp: "B", jp: "うん、明日のテストがあるから二時間勉強する。", zh: "嗯，因为明天有考试，要学两个小时。", en: "Yes, I have a test tomorrow, so I’ll study for two hours." },
+          { sp: "A", jp: "分からないところがあったら聞いて。", zh: "有不懂的地方就问我。", en: "Ask me if there’s anything you don’t understand." }
+        ]},
+        { title: "習慣 / 少しずつ", lines: [
+          { sp: "A", jp: "毎日どのくらい勉強してる？", zh: "每天学多久？", en: "How long do you study every day?" },
+          { sp: "B", jp: "忙しい日は十分だけ。でも毎日勉強するようにしてる。", zh: "忙的时候只有十分钟。但尽量每天都学。", en: "Only ten minutes on busy days. But I try to study every day." },
+          { sp: "A", jp: "続けるのが一番大事だね。", zh: "坚持最重要。", en: "Keeping it up is the most important thing." }
+        ]}
+      ],
+      "練習する": [
+        { title: "発音 / 会話", lines: [
+          { sp: "A", jp: "この発音をもう一回練習してもいい？", zh: "这个发音可以再练一次吗？", en: "Can I practice this pronunciation one more time?" },
+          { sp: "B", jp: "もちろん。ゆっくり言えば大丈夫。", zh: "当然。慢慢说就没问题。", en: "Of course. You’ll be fine if you say it slowly." },
+          { sp: "A", jp: "ありがとう。録音して確認してみる。", zh: "谢谢。我录下来确认一下。", en: "Thanks. I’ll record it and check." }
+        ]},
+        { title: "スポーツ / 試合前", lines: [
+          { sp: "A", jp: "明日の試合の前に練習する？", zh: "明天比赛前练习吗？", en: "Will you practice before tomorrow’s game?" },
+          { sp: "B", jp: "うん、軽く練習してから行く。", zh: "嗯，简单练一下再去。", en: "Yes, I’ll practice lightly before going." },
+          { sp: "A", jp: "けがしないようにね。", zh: "别受伤哦。", en: "Be careful not to get injured." }
+        ]}
+      ],
+      "確認する": [
+        { title: "仕事 / 送信前", lines: [
+          { sp: "A", jp: "送る前に、名前と日付を確認してください。", zh: "发送前请确认姓名和日期。", en: "Please check the name and date before sending it." },
+          { sp: "B", jp: "はい、添付ファイルも確認します。", zh: "好的，附件也会确认。", en: "Sure, I’ll check the attachment too." },
+          { sp: "A", jp: "ありがとうございます。間違いがあると困るので。", zh: "谢谢。因为出错会很麻烦。", en: "Thank you. It would be a problem if there were mistakes." }
+        ]},
+        { title: "旅行 / 予約", lines: [
+          { sp: "A", jp: "ホテルの予約を確認した？", zh: "酒店预约确认了吗？", en: "Did you confirm the hotel reservation?" },
+          { sp: "B", jp: "うん、メールで確認した。チェックインは三時から。", zh: "嗯，用邮件确认了。三点开始入住。", en: "Yes, I confirmed it by email. Check-in starts at three." },
+          { sp: "A", jp: "じゃあ安心だね。", zh: "那就放心了。", en: "Then we’re good." }
+        ]}
+      ],
+      "並ぶ": [
+        { title: "人気店 / 行列", lines: [
+          { sp: "A", jp: "このラーメン屋、すごく並んでるね。", zh: "这家拉面店排队排得好厉害。", en: "There’s a huge line at this ramen shop." },
+          { sp: "B", jp: "三十分くらいなら並ぶ？", zh: "三十分钟左右的话要排吗？", en: "Do you want to line up if it’s about thirty minutes?" },
+          { sp: "A", jp: "せっかくだから並ぼう。", zh: "难得来，就排吧。", en: "Since we’re here, let’s line up." }
+        ]},
+        { title: "整列 / イベント", lines: [
+          { sp: "A", jp: "入場する人は、こちらに並んでください。", zh: "入场的人请在这里排队。", en: "People entering, please line up here." },
+          { sp: "B", jp: "最後尾はどこですか。", zh: "队尾在哪里？", en: "Where is the end of the line?" },
+          { sp: "A", jp: "あの看板の後ろに並んでください。", zh: "请排在那个牌子后面。", en: "Please line up behind that sign." }
+        ]}
+      ],
+      "並べる": [
+        { title: "食卓 / 準備", lines: [
+          { sp: "A", jp: "お皿をテーブルに並べてくれる？", zh: "可以把盘子摆到桌子上吗？", en: "Could you arrange the plates on the table?" },
+          { sp: "B", jp: "うん。箸も一緒に並べるね。", zh: "嗯。筷子也一起摆好。", en: "Sure. I’ll set out the chopsticks too." },
+          { sp: "A", jp: "ありがとう。料理はもうすぐできるよ。", zh: "谢谢。菜马上就好。", en: "Thanks. The food will be ready soon." }
+        ]},
+        { title: "店 / 商品陳列", lines: [
+          { sp: "A", jp: "新商品は棚の前に並べてください。", zh: "请把新品摆在货架前面。", en: "Please arrange the new products at the front of the shelf." },
+          { sp: "B", jp: "色ごとに並べますか。", zh: "按颜色摆吗？", en: "Should I arrange them by color?" },
+          { sp: "A", jp: "はい、そのほうが見やすいです。", zh: "是的，那样更容易看。", en: "Yes, that will make them easier to see." }
+        ]}
+      ],
+      "消える": [
+        { title: "電気 / 急に", lines: [
+          { sp: "A", jp: "あれ、急に電気が消えた。", zh: "咦，灯突然灭了。", en: "Oh, the light suddenly went out." },
+          { sp: "B", jp: "停電かな。スマホのライトをつけるね。", zh: "是不是停电了。我打开手机灯。", en: "Maybe it’s a blackout. I’ll turn on my phone light." },
+          { sp: "A", jp: "ブレーカーを確認してみよう。", zh: "看一下电闸吧。", en: "Let’s check the breaker." }
+        ]},
+        { title: "データ / トラブル", lines: [
+          { sp: "A", jp: "保存したファイルが消えたみたい。", zh: "保存的文件好像消失了。", en: "It looks like the file I saved disappeared." },
+          { sp: "B", jp: "ゴミ箱にもない？", zh: "回收站里也没有吗？", en: "Is it not in the trash either?" },
+          { sp: "A", jp: "ない。もう一度作るしかないかも。", zh: "没有。可能只能重新做了。", en: "No. I may have to make it again." }
+        ]}
+      ],
+      "消す": [
+        { title: "電気 / 節電", lines: [
+          { sp: "A", jp: "出る前に電気を消した？", zh: "出门前关灯了吗？", en: "Did you turn off the lights before leaving?" },
+          { sp: "B", jp: "忘れてた。今消すね。", zh: "忘了。我现在关。", en: "I forgot. I’ll turn them off now." },
+          { sp: "A", jp: "ありがとう。エアコンも確認して。", zh: "谢谢。空调也确认一下。", en: "Thanks. Check the air conditioner too." }
+        ]},
+        { title: "ホワイトボード / 会議後", lines: [
+          { sp: "A", jp: "会議が終わったら、ボードの文字を消してください。", zh: "会议结束后，请把白板上的字擦掉。", en: "Please erase the writing on the board after the meeting." },
+          { sp: "B", jp: "はい、写真を撮ってから消します。", zh: "好的，拍照后擦掉。", en: "Sure, I’ll erase it after taking a photo." },
+          { sp: "A", jp: "お願いします。", zh: "拜托了。", en: "Thank you." }
+        ]}
+      ],
+      "壊れる": [
+        { title: "スマホ / 困った", lines: [
+          { sp: "A", jp: "スマホ、どうしたの？", zh: "手机怎么了？", en: "What happened to your phone?" },
+          { sp: "B", jp: "落としたら画面が壊れた。", zh: "掉了一下屏幕坏了。", en: "I dropped it and the screen broke." },
+          { sp: "A", jp: "修理に出したほうがいいね。", zh: "最好拿去修。", en: "You should take it in for repair." }
+        ]},
+        { title: "家電 / 洗濯機", lines: [
+          { sp: "A", jp: "洗濯機が壊れたみたい。動かない。", zh: "洗衣机好像坏了。不动。", en: "The washing machine seems broken. It won’t run." },
+          { sp: "B", jp: "保証書は残ってる？", zh: "保修书还在吗？", en: "Do you still have the warranty?" },
+          { sp: "A", jp: "探してみる。", zh: "我找找看。", en: "I’ll look for it." }
+        ]}
+      ],
+      "壊す": [
+        { title: "借り物 / 謝る", lines: [
+          { sp: "A", jp: "ごめん、借りた傘を壊してしまった。", zh: "对不起，我把借来的伞弄坏了。", en: "I’m sorry, I broke the umbrella I borrowed." },
+          { sp: "B", jp: "けがはなかった？傘は気にしないで。", zh: "没受伤吧？伞不用在意。", en: "Were you hurt? Don’t worry about the umbrella." },
+          { sp: "A", jp: "ありがとう。でも新しいのを買って返すよ。", zh: "谢谢。不过我会买新的还你。", en: "Thanks. But I’ll buy a new one and return it." }
+        ]},
+        { title: "注意 / 子ども", lines: [
+          { sp: "A", jp: "そのおもちゃ、強く引っ張ると壊すよ。", zh: "那个玩具用力拉会弄坏哦。", en: "If you pull that toy hard, you’ll break it." },
+          { sp: "B", jp: "分かった。やさしく使う。", zh: "知道了。我轻轻用。", en: "Okay. I’ll use it gently." },
+          { sp: "A", jp: "そうしてくれると助かる。", zh: "你能那样就帮大忙了。", en: "That would help." }
+        ]}
+      ],
+      "落ちる": [
+        { title: "物 / 床", lines: [
+          { sp: "A", jp: "鍵が床に落ちたよ。", zh: "钥匙掉到地上了。", en: "Your key fell on the floor." },
+          { sp: "B", jp: "本当だ。拾ってくれてありがとう。", zh: "真的。谢谢你帮我捡。", en: "You’re right. Thanks for picking it up." },
+          { sp: "A", jp: "かばんのポケットが開いてるみたい。", zh: "你的包口袋好像开着。", en: "It looks like your bag pocket is open." }
+        ]},
+        { title: "試験 / 結果", lines: [
+          { sp: "A", jp: "試験の結果、どうだった？", zh: "考试结果怎么样？", en: "How were the exam results?" },
+          { sp: "B", jp: "残念だけど、今回は落ちた。", zh: "很遗憾，这次没通过。", en: "Unfortunately, I failed this time." },
+          { sp: "A", jp: "次は一緒に勉強しよう。", zh: "下次一起学习吧。", en: "Let’s study together next time." }
+        ]}
+      ],
+      "落とす": [
+        { title: "財布 / 探す", lines: [
+          { sp: "A", jp: "財布を落としたかもしれない。", zh: "我可能把钱包弄丢了。", en: "I may have dropped my wallet." },
+          { sp: "B", jp: "最後に使ったのはどこ？", zh: "最后在哪里用的？", en: "Where did you use it last?" },
+          { sp: "A", jp: "コンビニだと思う。戻って聞いてみる。", zh: "我觉得是便利店。回去问问看。", en: "I think it was the convenience store. I’ll go back and ask." }
+        ]},
+        { title: "注意 / スマホ", lines: [
+          { sp: "A", jp: "スマホを落とさないように気をつけて。", zh: "小心别把手机掉了。", en: "Be careful not to drop your phone." },
+          { sp: "B", jp: "うん、ポケットじゃなくてバッグに入れる。", zh: "嗯，不放口袋，放包里。", en: "Yes, I’ll put it in my bag instead of my pocket." },
+          { sp: "A", jp: "そのほうが安心だね。", zh: "那样比较放心。", en: "That’s safer." }
+        ]}
+      ],
+      "集まる": [
+        { title: "集合 / 駅前", lines: [
+          { sp: "A", jp: "明日はどこに集まる？", zh: "明天在哪里集合？", en: "Where are we gathering tomorrow?" },
+          { sp: "B", jp: "駅前に九時集合だよ。", zh: "九点在车站前集合。", en: "We’re meeting in front of the station at nine." },
+          { sp: "A", jp: "分かった。遅れないように行く。", zh: "知道了。我会尽量不迟到。", en: "Got it. I’ll try not to be late." }
+        ]},
+        { title: "人 / イベント", lines: [
+          { sp: "A", jp: "会場に人が集まってきたね。", zh: "会场里人开始聚起来了。", en: "People are starting to gather at the venue." },
+          { sp: "B", jp: "もうすぐイベントが始まるからね。", zh: "因为活动马上要开始了。", en: "Because the event will start soon." },
+          { sp: "A", jp: "受付を手伝おう。", zh: "去帮忙接待吧。", en: "Let’s help at reception." }
+        ]}
+      ],
+      "集める": [
+        { title: "資料 / 会議", lines: [
+          { sp: "A", jp: "会議の前に資料を集めておいてください。", zh: "开会前请把资料收集好。", en: "Please collect the materials before the meeting." },
+          { sp: "B", jp: "はい、全員分を一つのフォルダに入れます。", zh: "好的，我把所有人的放进一个文件夹。", en: "Sure, I’ll put everyone’s into one folder." },
+          { sp: "A", jp: "助かります。", zh: "帮大忙了。", en: "That helps." }
+        ]},
+        { title: "趣味 / 切手", lines: [
+          { sp: "A", jp: "昔から切手を集めてるの？", zh: "你从以前就收集邮票吗？", en: "Have you collected stamps for a long time?" },
+          { sp: "B", jp: "うん。旅行先で買ったものを集めてる。", zh: "嗯。收集旅行地买的邮票。", en: "Yes. I collect ones I buy while traveling." },
+          { sp: "A", jp: "思い出にもなっていいね。", zh: "也能当回忆，真不错。", en: "That’s nice because they become memories too." }
+        ]}
+      ],
+      "始まる": [
+        { title: "授業 / 時間", lines: [
+          { sp: "A", jp: "授業は何時に始まる？", zh: "课几点开始？", en: "What time does class start?" },
+          { sp: "B", jp: "九時に始まるから、あと十分ある。", zh: "九点开始，所以还有十分钟。", en: "It starts at nine, so we have ten minutes." },
+          { sp: "A", jp: "じゃあ先にトイレに行ってくる。", zh: "那我先去下洗手间。", en: "Then I’ll go to the restroom first." }
+        ]},
+        { title: "映画 / 開演前", lines: [
+          { sp: "A", jp: "映画、もう始まった？", zh: "电影已经开始了吗？", en: "Has the movie started yet?" },
+          { sp: "B", jp: "まだ予告だよ。本編はこれから始まる。", zh: "还在预告。正片接下来开始。", en: "It’s still previews. The main movie is about to start." },
+          { sp: "A", jp: "よかった。間に合った。", zh: "太好了，赶上了。", en: "Good. We made it." }
+        ]}
+      ],
+      "始める": [
+        { title: "勉強 / 新習慣", lines: [
+          { sp: "A", jp: "最近、日本語の勉強を始めたんだ。", zh: "我最近开始学日语了。", en: "I recently started studying Japanese." },
+          { sp: "B", jp: "いいね。何から始めたの？", zh: "不错。你从什么开始的？", en: "Nice. What did you start with?" },
+          { sp: "A", jp: "まずひらがなから始めた。", zh: "先从平假名开始。", en: "I started with hiragana first." }
+        ]},
+        { title: "会議 / 進行", lines: [
+          { sp: "A", jp: "時間になったので、会議を始めます。", zh: "时间到了，开始会议。", en: "It’s time, so we’ll start the meeting." },
+          { sp: "B", jp: "資料は全員に配りました。", zh: "资料已经发给所有人了。", en: "The materials have been handed out to everyone." },
+          { sp: "A", jp: "ありがとうございます。では一つ目の議題から始めましょう。", zh: "谢谢。那从第一个议题开始吧。", en: "Thank you. Let’s start with the first topic." }
+        ]}
+      ],
+      "決まる": [
+        { title: "予定 / 旅行", lines: [
+          { sp: "A", jp: "旅行の日程、決まった？", zh: "旅行日程定下来了吗？", en: "Has the travel schedule been decided?" },
+          { sp: "B", jp: "うん、来月の第二週に決まった。", zh: "嗯，定在下个月第二周了。", en: "Yes, it’s been set for the second week of next month." },
+          { sp: "A", jp: "じゃあホテルを探そう。", zh: "那找酒店吧。", en: "Then let’s look for a hotel." }
+        ]},
+        { title: "仕事 / 担当", lines: [
+          { sp: "A", jp: "新しい担当者は決まりましたか。", zh: "新的负责人定下来了吗？", en: "Has the new person in charge been decided?" },
+          { sp: "B", jp: "はい、田中さんに決まりました。", zh: "是的，定为田中先生/女士了。", en: "Yes, it has been decided to be Tanaka." },
+          { sp: "A", jp: "分かりました。あとで連絡します。", zh: "了解。我稍后联系。", en: "Understood. I’ll contact them later." }
+        ]}
+      ],
+      "決める": [
+        { title: "予定 / 相談", lines: [
+          { sp: "A", jp: "週末どこに行くか決めた？", zh: "周末去哪儿决定了吗？", en: "Have you decided where to go this weekend?" },
+          { sp: "B", jp: "まだ。天気を見てから決めたい。", zh: "还没。想看天气后再决定。", en: "Not yet. I want to decide after checking the weather." },
+          { sp: "A", jp: "じゃあ金曜日にもう一度話そう。", zh: "那周五再聊一次吧。", en: "Then let’s talk again on Friday." }
+        ]},
+        { title: "注文 / レストラン", lines: [
+          { sp: "A", jp: "注文、決めた？", zh: "点什么决定了吗？", en: "Have you decided what to order?" },
+          { sp: "B", jp: "うん、ハンバーグに決めた。", zh: "嗯，决定点汉堡排。", en: "Yes, I decided on the hamburg steak." },
+          { sp: "A", jp: "じゃあ店員さんを呼ぶね。", zh: "那我叫店员。", en: "Then I’ll call the server." }
+        ]}
+      ],
+      "する": [
+        { title: "予定 / 今日", lines: [
+          { sp: "A", jp: "今日は何をする？", zh: "今天做什么？", en: "What are you doing today?" },
+          { sp: "B", jp: "午前中は掃除して、午後は買い物する。", zh: "上午打扫，下午购物。", en: "I’ll clean in the morning and shop in the afternoon." },
+          { sp: "A", jp: "じゃあ夜はゆっくりできそうだね。", zh: "那晚上应该能慢慢休息了。", en: "Then you should be able to relax at night." }
+        ]},
+        { title: "相談 / 何をすればいい", lines: [
+          { sp: "A", jp: "この書類、どうすればいいですか。", zh: "这份文件该怎么处理？", en: "What should I do with this document?" },
+          { sp: "B", jp: "名前を書いて、受付に出してください。", zh: "写上名字，然后交到前台。", en: "Write your name and submit it at reception." },
+          { sp: "A", jp: "分かりました。すぐにします。", zh: "明白。我马上做。", en: "Understood. I’ll do it right away." }
+        ]}
+      ]
+    };
+
+    function resolveDialogueEntry(word) {
+      const entry = dialogueBank[word];
+      if (typeof entry === "string") return dialogueBank[entry];
+      return entry;
+    }
+
+    function buildFallbackDialogues(f, meaning) {
+      const actZh = meaning.zh;
+      const actEn = meaning.en;
+      return [
+        {
+          title: "日常 / 自然会話",
+          lines: [
+            { sp: "A", jp: `今日、${f.dict}予定はある？`, zh: `今天有${actZh}的安排吗？`, en: `Do you have plans to ${actEn} today?` },
+            { sp: "B", jp: `うん、時間があれば${f.masu}。`, zh: `嗯，如果有时间就${actZh}。`, en: `Yes, I’ll ${actEn} if I have time.` },
+            { sp: "A", jp: `無理しないでね。`, zh: `别勉强哦。`, en: `Don’t push yourself.` }
+          ]
+        },
+        {
+          title: "丁寧 / 確認",
+          lines: [
+            { sp: "A", jp: `すみません、ここで${f.te}もいいですか。`, zh: `不好意思，可以在这里${actZh}吗？`, en: `Excuse me, is it okay to ${actEn} here?` },
+            { sp: "B", jp: `はい、大丈夫です。`, zh: `可以，没问题。`, en: `Yes, that’s fine.` },
+            { sp: "A", jp: `ありがとうございます。`, zh: `谢谢。`, en: `Thank you.` }
+          ]
+        }
+      ];
+    }
+
+    function buildDialogues(f, meaning) {
+      return resolveDialogueEntry(f.dict) || buildFallbackDialogues(f, meaning);
+    }
+
+    function buildPrompt(f, meaning) {
+      return `You are a Japanese teacher for Chinese and English speakers. Create natural short dialogues for the verb "${f.dict}". Include: meaning in Chinese and English, all major conjugations including negative forms, 3 dialogue examples, Chinese translation, English translation, and notes for beginners. Keep the Japanese natural and conversational.`;
+    }
+
+    const transitivePairs = {
+      "開く": { pairTitle: "開く ↔ 開ける", intransitive: "ドアが開く。", inZh: "门自己开了 / 门处于打开状态。", inEn: "The door opens.", transitive: "店員がドアを開ける。", trZh: "店员打开门。", trEn: "The clerk opens the door." },
+      "開ける": { pairTitle: "開く ↔ 開ける", intransitive: "ドアが開く。", inZh: "门自己开了 / 门处于打开状态。", inEn: "The door opens.", transitive: "店員がドアを開ける。", trZh: "店员打开门。", trEn: "The clerk opens the door." },
+      "閉まる": { pairTitle: "閉まる ↔ 閉める", intransitive: "窓が閉まる。", inZh: "窗户关上了。", inEn: "The window closes.", transitive: "私が窓を閉める。", trZh: "我关窗户。", trEn: "I close the window." },
+      "閉める": { pairTitle: "閉まる ↔ 閉める", intransitive: "窓が閉まる。", inZh: "窗户关上了。", inEn: "The window closes.", transitive: "私が窓を閉める。", trZh: "我关窗户。", trEn: "I close the window." },
+      "入る": { pairTitle: "入る ↔ 入れる", intransitive: "猫が部屋に入る。", inZh: "猫自己进房间。", inEn: "The cat enters the room.", transitive: "箱に本を入れる。", trZh: "把书放进箱子里。", trEn: "I put the book into the box." },
+      "入れる": { pairTitle: "入る ↔ 入れる", intransitive: "猫が部屋に入る。", inZh: "猫自己进房间。", inEn: "The cat enters the room.", transitive: "箱に本を入れる。", trZh: "把书放进箱子里。", trEn: "I put the book into the box." },
+      "出る": { pairTitle: "出る ↔ 出す", intransitive: "学生が教室を出る。", inZh: "学生走出教室。", inEn: "The student leaves the classroom.", transitive: "先生が宿題を出す。", trZh: "老师布置作业。", trEn: "The teacher gives homework." },
+      "出す": { pairTitle: "出る ↔ 出す", intransitive: "学生が教室を出る。", inZh: "学生走出教室。", inEn: "The student leaves the classroom.", transitive: "先生が宿題を出す。", trZh: "老师布置作业。", trEn: "The teacher gives homework." },
+      "並ぶ": { pairTitle: "並ぶ ↔ 並べる", intransitive: "人が店の前に並ぶ。", inZh: "人们在店前排队。", inEn: "People line up in front of the shop.", transitive: "店員が椅子を並べる。", trZh: "店员把椅子摆好。", trEn: "The clerk lines up the chairs." },
+      "並べる": { pairTitle: "並ぶ ↔ 並べる", intransitive: "人が店の前に並ぶ。", inZh: "人们在店前排队。", inEn: "People line up in front of the shop.", transitive: "店員が椅子を並べる。", trZh: "店员把椅子摆好。", trEn: "The clerk lines up the chairs." },
+      "消える": { pairTitle: "消える ↔ 消す", intransitive: "電気が消える。", inZh: "灯灭了。", inEn: "The light goes out.", transitive: "私が電気を消す。", trZh: "我把灯关掉。", trEn: "I turn off the light." },
+      "消す": { pairTitle: "消える ↔ 消す", intransitive: "電気が消える。", inZh: "灯灭了。", inEn: "The light goes out.", transitive: "私が電気を消す。", trZh: "我把灯关掉。", trEn: "I turn off the light." },
+      "壊れる": { pairTitle: "壊れる ↔ 壊す", intransitive: "スマホが壊れる。", inZh: "手机坏了。", inEn: "The phone breaks.", transitive: "弟がスマホを壊す。", trZh: "弟弟把手机弄坏。", trEn: "My younger brother breaks the phone." },
+      "壊す": { pairTitle: "壊れる ↔ 壊す", intransitive: "スマホが壊れる。", inZh: "手机坏了。", inEn: "The phone breaks.", transitive: "弟がスマホを壊す。", trZh: "弟弟把手机弄坏。", trEn: "My younger brother breaks the phone." },
+      "落ちる": { pairTitle: "落ちる ↔ 落とす", intransitive: "鍵が床に落ちる。", inZh: "钥匙掉到地上。", inEn: "The key falls on the floor.", transitive: "私が鍵を落とす。", trZh: "我把钥匙弄掉了。", trEn: "I drop the key." },
+      "落とす": { pairTitle: "落ちる ↔ 落とす", intransitive: "鍵が床に落ちる。", inZh: "钥匙掉到地上。", inEn: "The key falls on the floor.", transitive: "私が鍵を落とす。", trZh: "我把钥匙弄掉了。", trEn: "I drop the key." },
+      "集まる": { pairTitle: "集まる ↔ 集める", intransitive: "学生が駅前に集まる。", inZh: "学生们在车站前集合。", inEn: "Students gather in front of the station.", transitive: "先生が資料を集める。", trZh: "老师收集资料。", trEn: "The teacher collects the materials." },
+      "集める": { pairTitle: "集まる ↔ 集める", intransitive: "学生が駅前に集まる。", inZh: "学生们在车站前集合。", inEn: "Students gather in front of the station.", transitive: "先生が資料を集める。", trZh: "老师收集资料。", trEn: "The teacher collects the materials." },
+      "始まる": { pairTitle: "始まる ↔ 始める", intransitive: "授業が九時に始まる。", inZh: "课九点开始。", inEn: "Class starts at nine.", transitive: "先生が授業を始める。", trZh: "老师开始上课。", trEn: "The teacher starts the class." },
+      "始める": { pairTitle: "始まる ↔ 始める", intransitive: "授業が九時に始まる。", inZh: "课九点开始。", inEn: "Class starts at nine.", transitive: "先生が授業を始める。", trZh: "老师开始上课。", trEn: "The teacher starts the class." },
+      "決まる": { pairTitle: "決まる ↔ 決める", intransitive: "予定が決まる。", inZh: "计划定下来了。", inEn: "The plan is decided.", transitive: "みんなで予定を決める。", trZh: "大家一起决定计划。", trEn: "We decide the plan together." },
+      "決める": { pairTitle: "決まる ↔ 決める", intransitive: "予定が決まる。", inZh: "计划定下来了。", inEn: "The plan is decided.", transitive: "みんなで予定を決める。", trZh: "大家一起决定计划。", trEn: "We decide the plan together." }
+    };
+
+    function buildTransitivityExamples(f) {
+      return transitivePairs[f.dict] || null;
+    }
+
+    function renderTransitivityExamples(data) {
+      const box = $("transitivityBox");
+      if (!data) {
+        box.classList.add("hidden");
+        $("transitivityExamples").innerHTML = "";
+        return;
+      }
+      box.classList.remove("hidden");
+      $("transitivityTitle").textContent = `自他ペア：${data.pairTitle}`;
+      $("transitivityExamples").innerHTML = `
+        <div class="transitivity-card">
+          <div class="transitivity-label">自動詞</div>
+          <div class="example-line jp">${esc(data.intransitive)}</div>
+          <div class="trans">中：${esc(data.inZh)}</div>
+          <div class="trans">EN: ${esc(data.inEn)}</div>
+        </div>
+        <div class="transitivity-card">
+          <div class="transitivity-label">他動詞</div>
+          <div class="example-line jp">${esc(data.transitive)}</div>
+          <div class="trans">中：${esc(data.trZh)}</div>
+          <div class="trans">EN: ${esc(data.trEn)}</div>
+        </div>
+      `;
+    }
+
+    function renderForms(f, meaning, type, selectedType) {
+      const rows = buildRows(f);
+      state.rows = rows;
+      $("formsTitle").textContent = `${f.dict} - Conjugation.exe`;
+      $("metaWord").textContent = f.dict;
+      $("metaMeaning").textContent = `${meaning.zh} / ${meaning.en}${meaning.kana ? `｜${meaning.kana}` : ""}`;
+      $("metaType").textContent = `${typeLabel(type)}${meaning.transitivity ? `｜${meaning.transitivity}` : ""}`;
+      $("detectNote").textContent = selectedType === "auto" ? `Auto detected: ${typeLabel(type)}` : `Manual mode: ${typeLabel(type)}`;
+      renderTransitivityExamples(buildTransitivityExamples(f));
+      $("formsBody").innerHTML = rows.map((row) => `
+        <tr>
+          <td><div class="form-name">${esc(row.name)}</div><div class="note">${esc(row.note)}</div></td>
+          <td><span class="jp">${esc(row.aff)}</span></td>
+          <td><span class="jp">${esc(row.neg)}</span></td>
+          <td><span class="jp">${esc(row.polite)}</span></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderDialogues(dialogues, f) {
+      state.dialogues = dialogues;
+      $("dialogueTitle").textContent = `${f.dict} - Dialogue.txt`;
+      $("dialogueList").innerHTML = dialogues.map((card) => `
+        <section class="dialogue-card">
+          <div class="dialogue-head">${esc(card.title)}</div>
+          ${card.lines.map((line) => `
+            <div class="line">
+              <div><span class="speaker">${esc(line.sp)}:</span><span class="jp">${esc(line.jp)}</span></div>
+              <div class="trans">中：${esc(line.zh)}</div>
+              <div class="trans">EN: ${esc(line.en)}</div>
+            </div>
+          `).join("")}
+        </section>
+      `).join("");
+    }
+
+    function formsToMarkdown(f, meaning, rows) {
+      const lines = [];
+      lines.push(`# ${f.dict}`);
+      lines.push(`意味: ${meaning.zh} / ${meaning.en}`);
+      if (meaning.kana || meaning.transitivity) lines.push(`読み・分類: ${meaning.kana || "-"} / ${meaning.transitivity || "-"}`);
+      lines.push("");
+      lines.push("| 活用 | 肯定 | 否定 | 丁寧 |");
+      lines.push("|---|---|---|---|");
+      rows.forEach((r) => lines.push(`| ${r.name} | ${r.aff} | ${r.neg} | ${r.polite} |`));
+      return lines.join("\n");
+    }
+
+    function dialoguesToText(dialogues) {
+      return dialogues.map((card) => {
+        const body = card.lines.map((l) => `${l.sp}: ${l.jp}\n中: ${l.zh}\nEN: ${l.en}`).join("\n");
+        return `[${card.title}]\n${body}`;
+      }).join("\n\n");
+    }
+
+    function setStatus(text) {
+      $("taskStatus").textContent = text;
+    }
+
+    function generate() {
+      const verb = cleanInput($("wordInput").value);
+      if (!verb) {
+        setStatus("Please input a verb");
+        $("wordInput").focus();
+        return;
+      }
+
+      const selectedType = $("typeSelect").value;
+      try {
+        const detected = detectType(verb, selectedType);
+        const forms = buildForms(verb, selectedType);
+        const meaning = getMeaning(forms.dict, detected);
+        const dialogues = buildDialogues(forms, meaning);
+        const prompt = buildPrompt(forms, meaning);
+        state.forms = forms;
+        state.meaning = meaning;
+        state.prompt = prompt;
+        renderForms(forms, meaning, detected, selectedType);
+        renderDialogues(dialogues, forms);
+        document.body.classList.add("searched");
+        $("workspace").classList.remove("hidden");
+        // Ensure windows are visible if previously closed
+        $("formsWindow").classList.remove("hidden");
+        $("dialogueWindow").classList.remove("hidden");
+        setStatus(`${forms.dict} opened`);
+      } catch (error) {
+        setStatus(error.message || "Could not generate forms");
+        alert(error.message || "Could not generate forms");
+      }
+    }
+
+    async function copyText(text, okMessage) {
+      try {
+        await navigator.clipboard.writeText(text);
+        setStatus(okMessage);
+      } catch (error) {
+        const box = document.createElement("textarea");
+        box.value = text;
+        document.body.appendChild(box);
+        box.select();
+        document.execCommand("copy");
+        box.remove();
+        setStatus(okMessage);
+      }
+    }
+
+    function initClock() {
+      const update = () => {
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        $("clock").textContent = `${hh}:${mm}`;
+      };
+      update();
+      setInterval(update, 1000 * 20);
+    }
+
+    // 回到主页的功能 (Start Button)
+    $("startBtn").addEventListener("click", () => {
+      document.body.classList.remove("searched");
+      $("workspace").classList.add("hidden");
+      $("wordInput").value = "";
+      $("wordInput").focus();
+      setStatus("Ready");
+    });
+
+    $("searchForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      generate();
+    });
+
+    $("regenBtn").addEventListener("click", generate);
+    $("typeSelect").addEventListener("change", () => {
+      if ($("wordInput").value.trim()) generate();
+    });
+
+    $("copyFormsBtn").addEventListener("click", () => {
+      if (!state.forms) return;
+      copyText(formsToMarkdown(state.forms, state.meaning, state.rows), "Conjugation table copied");
+    });
+
+    $("copyDialogueBtn").addEventListener("click", () => {
+      if (!state.dialogues.length) return;
+      copyText(dialoguesToText(state.dialogues), "Dialogue copied");
+    });
+
+    $("copyPromptBtn").addEventListener("click", () => {
+      if (!state.prompt) return;
+      copyText(state.prompt, "AI prompt copied");
+    });
+
+    initClock();
+  </script>
+</body>
+</html>
